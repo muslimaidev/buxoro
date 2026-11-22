@@ -22,9 +22,11 @@ backup() { [[ -f $1 ]] && sudo cp -a "$1" "$1.bx-backup-$STAMP" && ok "zaxira: $
 
 esp_path() {
     local p
-    p=$(bootctl -p 2>/dev/null || true)
+    # /boot ko'pincha faqat root o'qiydigan qilib ulanadi (archinstall: fmask=0077) — sudo bilan
+    p=$(sudo bootctl -p 2>/dev/null || true)
     [[ -n $p ]] && { echo "$p"; return; }
-    for p in /efi /boot /boot/efi; do [[ -d $p/EFI ]] && { echo "$p"; return; }; done
+    for p in /efi /boot /boot/efi; do sudo test -d "$p/EFI" && { echo "$p"; return; }; done
+    return 0
 }
 
 limine_conf() {
@@ -34,14 +36,54 @@ limine_conf() {
              "$esp/EFI/BOOT/limine.conf" /boot/EFI/limine/limine.conf /efi/EFI/limine/limine.conf; do
         [[ -n $c ]] && sudo test -f "$c" && { echo "$c"; return; }
     done
+    return 0
+}
+
+# UEFI o'zgaruvchisi: hozirgi tizimni qaysi bootloader yuklagani (systemd-boot, Limine,
+# rEFInd va GRUB 2.12+ "bli" moduli yozadi). Faylni oddiy foydalanuvchi ham o'qiy oladi.
+loader_info() {
+    local v=/sys/firmware/efi/efivars/LoaderInfo-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f
+    [[ -r $v ]] && tail -c +5 "$v" | tr -d '\0'
+    return 0
+}
+
+refind_conf() {
+    local esp; esp=$(esp_path)
+    local c
+    for c in "$esp/EFI/refind/refind.conf" "$esp/EFI/BOOT/refind.conf" /boot/EFI/refind/refind.conf; do
+        sudo test -f "$c" 2>/dev/null && { echo "$c"; return; }
+    done
+    return 0
 }
 
 detect() {
+    local li; li=$(loader_info)
+    case "$li" in
+        *systemd-boot*) echo systemd-boot; return ;;
+        *[Ll]imine*)    echo limine; return ;;
+        *rEFInd*)       echo refind; return ;;
+        *GRUB*)         echo grub; return ;;
+    esac
+    local esp; esp=$(esp_path)
     if [[ -n "$(limine_conf)" ]]; then echo limine
-    elif [[ -f /etc/default/grub ]] && sudo test -d /boot/grub; then echo grub
-    elif bootctl is-installed >/dev/null 2>&1; then echo systemd-boot
+    elif [[ -f /etc/default/grub ]] && { sudo test -d /boot/grub || sudo test -d "$esp/grub"; }; then echo grub
+    elif sudo bootctl is-installed >/dev/null 2>&1; then echo systemd-boot
+    elif [[ -n "$(refind_conf)" ]]; then echo refind
     else echo unknown
     fi
+}
+
+# Aniqlanmasa — foydalanuvchi yuborishi uchun tashxis ma'lumoti
+diagnose() {
+    echo
+    echo "   Tashxis (shuni yuboring):"
+    echo "   ── LoaderInfo: $(li=$(loader_info); echo "${li:-yo‘q}")"
+    echo "   ── ESP: $(e=$(esp_path); echo "${e:-topilmadi}")"
+    echo "   ── /etc/default/grub: $([[ -f /etc/default/grub ]] && echo bor || echo "yo‘q")"
+    echo "   ── bootctl:"; sudo bootctl status 2>&1 | sed -n '1,12p' | sed 's/^/        /'
+    echo "   ── EFI papkalari:"; sudo find "$(esp_path)/EFI" -maxdepth 2 -iname '*.efi' 2>/dev/null | head -12 | sed 's/^/        /'
+    echo "   ── efibootmgr:"; sudo efibootmgr 2>/dev/null | head -8 | sed 's/^/        /'
+    echo "   ── /etc/kernel/cmdline: $([[ -f /etc/kernel/cmdline ]] && echo "bor (UKI)" || echo "yo‘q")"
 }
 
 # ── Yadro parametrlarini qo'shish (takrorlanmasdan) ──────────────────
@@ -83,7 +125,30 @@ add_params() {
                 warn "/etc/default/limine topildi (limine-mkinitcpio-hook). KERNEL_CMDLINE ga ham qo'shing: ${PARAMS[*]}"
             fi
             if [[ -f /etc/kernel/cmdline ]]; then sudo mkinitcpio -P >/dev/null && ok "UKI qayta yaratildi"; fi ;;
-        *) warn "Bootloader aniqlanmadi — parametrlarni qo'lda qo'shing: ${PARAMS[*]}" ;;
+        refind)
+            local rl
+            for rl in /boot/refind_linux.conf "$(esp_path)/refind_linux.conf"; do
+                sudo test -f "$rl" || continue
+                backup "$rl"
+                for p in "${PARAMS[@]}"; do
+                    # Har bir qatordagi ikkinchi qo'shtirnoq ichidagi parametrlar
+                    sudo sed -i -E "/^\s*\"[^\"]*\"\s+\"/{/(\"| )${p}(\"| )/! s/^(\s*\"[^\"]*\"\s+\"[^\"]*)\"/\1 ${p}\"/}" "$rl"
+                done
+                ok "parametrlar qo'shildi: $rl"
+            done
+            if [[ -f /etc/kernel/cmdline ]]; then
+                for p in "${PARAMS[@]}"; do sudo grep -qE "(^| )${p}( |$)" /etc/kernel/cmdline || sudo sed -i -E "1 s/\$/ ${p}/" /etc/kernel/cmdline; done
+                sudo mkinitcpio -P >/dev/null && ok "UKI qayta yaratildi"
+            fi ;;
+        *)
+            if [[ -f /etc/kernel/cmdline ]]; then
+                # Bootloadersiz UKI (to'g'ridan-to'g'ri UEFI orqali) — parametrlar UKI ichida
+                backup /etc/kernel/cmdline
+                for p in "${PARAMS[@]}"; do sudo grep -qE "(^| )${p}( |$)" /etc/kernel/cmdline || sudo sed -i -E "1 s/\$/ ${p}/" /etc/kernel/cmdline; done
+                sudo mkinitcpio -P >/dev/null && ok "UKI: parametrlar qo'shildi va qayta yaratildi"
+            else
+                warn "Bootloader aniqlanmadi — yadro parametrlarini qo'lda qo'shing: ${PARAMS[*]}"
+            fi ;;
     esac
     if [[ $bl == grub ]]; then sudo grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1 && ok "grub.cfg yangilandi"; fi
 }
@@ -151,6 +216,25 @@ theme_limine() {
     ok "Limine mavzusi: $conf"
 }
 
+theme_refind() {
+    local conf; conf=$(refind_conf)
+    local dir; dir=$(dirname "$conf")
+    backup "$conf"
+    sudo install -m644 "$BX_DIR/boot/grub/background.png" "$dir/buxoro-banner.png"
+    local kv key
+    for kv in "timeout 2" "banner buxoro-banner.png" "banner_scale fillscreen" "hideui hints,arrows,badges" \
+              "selection_big buxoro-sel.png" "selection_small buxoro-sel.png" "showtools shutdown,reboot,firmware"; do
+        key=${kv%% *}
+        if sudo grep -qE "^\s*#?\s*${key}\b" "$conf"; then
+            sudo sed -i -E "0,/^\s*#?\s*${key}\b.*/s//${kv}/" "$conf"
+        else
+            echo "$kv" | sudo tee -a "$conf" >/dev/null
+        fi
+    done
+    sudo install -m644 "$BX_DIR/boot/grub/select_c.png" "$dir/buxoro-sel.png"
+    ok "rEFInd mavzusi: $conf (fon, 2 soniya, ortiqcha yozuvlarsiz)"
+}
+
 theme_systemd_boot() {
     local esp; esp=$(esp_path)
     local lc="$esp/loader/loader.conf"
@@ -171,7 +255,9 @@ cmd_theme() {
         grub)         theme_grub ;;
         limine)       theme_limine ;;
         systemd-boot) theme_systemd_boot ;;
-        *)            warn "Bootloader aniqlanmadi"; return 1 ;;
+        refind)       theme_refind ;;
+        *)            warn "Bootloader aniqlanmadi — hech narsa o'zgartirilmadi (kompyuter avvalgidek yuklanadi)."
+                      diagnose; return 1 ;;
     esac
 }
 
@@ -215,7 +301,7 @@ cmd_speed() {
 
 cmd_status() {
     step "Holat"
-    echo "   Bootloader:  $(detect)"
+    echo "   Bootloader:  $(detect)   (UEFI LoaderInfo: $(li=$(loader_info); echo "${li:-yo‘q}"))"
     echo "   Splash:      $(plymouth-set-default-theme 2>/dev/null || echo "o'rnatilmagan")"
     echo "   Yadro:       $(cat /proc/cmdline)"
     if command -v systemd-analyze >/dev/null; then
