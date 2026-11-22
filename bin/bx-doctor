@@ -78,7 +78,7 @@ grep -qw splash /proc/cmdline && ok "Jim yuklanish (quiet splash)" || meh "Yadro
 systemctl is-enabled greetd.service >/dev/null 2>&1 && ok "Login ekrani: greetd + ReGreet" || meh "Buxoro login ekrani yoqilmagan → bx-greeter install"
 
 head_ "Grafika"
-if lspci -d ::03xx 2>/dev/null | grep -qi nvidia; then
+if lspci -d ::03xx 2>/dev/null | grep -i nvidia >/dev/null; then
     dgpu=$(lspci -D -d ::03xx | grep -i nvidia | head -1 | cut -d' ' -f1)
     st=$(cat "/sys/bus/pci/devices/$dgpu/power/runtime_status" 2>/dev/null)
     case "$st" in
@@ -108,8 +108,11 @@ else
 fi
 
 head_ "Shriftlar va mavzu"
-fc-list | grep -qi 'Inter' && ok "Inter" || bad "Inter shrifti yo'q (inter-font)"
-fc-list | grep -qi 'JetBrainsMono Nerd' && ok "JetBrainsMono Nerd Font" || bad "Nerd Font yo'q (ttf-jetbrains-mono-nerd)"
+fc-list : family | grep -iE '^Inter( Variable)?(,|$)' >/dev/null && ok "Inter" || bad "Inter shrifti yo'q → bx-fonts fix"
+fc-list : family | grep -i 'JetBrainsMono Nerd' >/dev/null && ok "JetBrainsMono Nerd Font" || bad "Nerd Font yo'q → bx-fonts fix"
+tsp=$(fc-match -f '%{spacing}' 'JetBrainsMono Nerd Font')
+if [[ $tsp == 100 || $tsp == 90 ]]; then ok "Terminal shrifti monospace: $(fc-match -f '%{family[0]}' 'JetBrainsMono Nerd Font')"
+else bad "Terminal shrifti monospace emas ($(fc-match -f '%{family[0]}' 'JetBrainsMono Nerd Font')) — harflar ustma-ust tushadi → bx-fonts fix"; fi
 ok "Mavzu: $(bx-theme current 2>/dev/null || echo '?')  ·  ranglar rasmdan: $(cat "${XDG_STATE_HOME:-$HOME/.local/state}/buxoro/auto-colors" 2>/dev/null || echo off)"
 command -v rofi >/dev/null && ok "Galereya: rofi" || meh "rofi yo'q — galereya oddiy menyuda ochiladi"
 command -v python3 >/dev/null && ok "bx-colors uchun Python" || bad "python yo'q — fon rasmidan ranglar ishlamaydi"

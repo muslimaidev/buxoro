@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# bx-menu — Buxoro'ning yagona menyusi: hamma narsa bir joyda (SUPER + ALT + Space)
+#   bx-menu [bo'lim]   bo'limlar: apps look capture setup install system power
+set -uo pipefail
+
+float_term() { # alohida suzuvchi terminal oynasida buyruq
+    footclient --app-id=bx-float -e "$@" 2>/dev/null || foot --app-id=bx-float -e "$@"
+}
+
+menu() { # menu "sarlavha" "variant1" "variant2" ...
+    local title=$1; shift
+    printf '%s\n' "$@" | fuzzel --dmenu --prompt "$title  " --width 34 --lines "$(( $# < 12 ? $# : 12 ))" \
+        --placeholder "Qidirish…" 2>/dev/null
+}
+
+back="󰁍  Orqaga"
+
+look() {
+    local auto tr
+    auto=$( [[ $(cat "${XDG_STATE_HOME:-$HOME/.local/state}/buxoro/auto-colors" 2>/dev/null) == on ]] && echo "yoqilgan" || echo "o‘chiq")
+    tr=$(bx-wall transition)
+    case "$(menu "󰏘 Ko‘rinish" "󰏘  Mavzular galereyasi" "󰸉  Fon rasmlari galereyasi" "󰔎  Tungi ↔ kunduzgi" \
+        "󰸌  Ranglar fon rasmidan: $auto" "󰒝  Tasodifiy fon rasmi" "󱞩  O‘tish effekti: $tr" "󰃽  Slayd-shou (30 daqiqa)" \
+        "󰖨  Tungi yorug‘lik" "$back")" in
+        *galereyasi*Mav*|*Mavzular*) bx-picker theme ;;
+        *Fon\ rasmlari*) bx-picker wallpaper ;;
+        *kunduzgi*)      bx-theme toggle ;;
+        *Ranglar*)       bx-wall auto toggle ;;
+        *Tasodifiy*)     bx-wall random ;;
+        *effekti*)
+            local t; t=$(menu "󱞩 Effekt" grow wave wipe outer fade random none) && bx-wall transition "$t" >/dev/null ;;
+        *Slayd*)         if [[ $(bx-wall slideshow status) == ishlayapti ]]; then bx-wall slideshow stop; else bx-wall slideshow start 30; fi ;;
+        *Tungi\ yorug*)  bx-nightlight ;;
+        "$back")         main ;;
+    esac
+}
+
+capture() {
+    local rec="󰻃  Ekran yozuvi: hudud" full="󰹑  Ekran yozuvi: butun ekran"
+    bx-record status >/dev/null 2>&1 && [[ $(bx-record status) == *recording* ]] && rec="󰙧  Yozuvni to‘xtatish" full=""
+    case "$(menu "󰄀 Yozib olish" "󰩭  Skrinshot: hudud" "󰍹  Skrinshot: butun ekran" "󰏫  Skrinshot + tahrirlash" \
+        "$rec" ${full:+"$full"} "󰈋  Ekrandan rang olish" "$back")" in
+        *hudud*Skrin*|*"Skrinshot: hudud"*) sleep 0.2; bx-shot region ;;
+        *"butun ekran"*Skrin*|*"Skrinshot: butun"*) sleep 0.2; bx-shot screen ;;
+        *tahrirlash*)     sleep 0.2; bx-shot edit ;;
+        *"yozuvi: hudud"*) bx-record region ;;
+        *"yozuvi: butun"*) bx-record screen ;;
+        *"to‘xtatish"*)     bx-record stop ;;
+        *rang*)           hyprpicker -a -f hex ;;
+        "$back")          main ;;
+    esac
+}
+
+setup() {
+    case "$(menu "󰒓 Sozlash" "󰖩  Wi-Fi" "󰂯  Bluetooth" "󰕾  Ovoz" "󰍹  Monitorlar" "󰐪  Printer" \
+        "󰛖  Shriftlar (tekshirish/tuzatish)" "󰌌  Tezkor tugmalar" "  Hyprland sozlamalari" "󰏘  GTK ko‘rinishi" "$back")" in
+        *Wi-Fi*)       float_term nmtui ;;
+        *Bluetooth*)   blueman-manager ;;
+        *Ovoz*)        pavucontrol ;;
+        *Monitorlar*)  command -v nwg-displays >/dev/null && nwg-displays || float_term sh -c 'hyprctl monitors; read -rp "Enter…"' ;;
+        *Printer*)     bx-printer menu ;;
+        *Shriftlar*)   float_term sh -c 'bx-fonts fix; read -rp "Yopish uchun Enter…"' ;;
+        *tugmalar*)    bx-keys ;;
+        *Hyprland*)    float_term nvim "$HOME/.config/hypr/bx/binds.lua" ;;
+        *GTK*)         nwg-look ;;
+        "$back")       main ;;
+    esac
+}
+
+install_menu() {
+    case "$(menu "󰏖 O‘rnatish" "󰏗  Paket o‘rnatish" "󰆴  Paket o‘chirish" "󰚰  Tizimni yangilash" \
+        "󰓦  Buxoro'ni GitHub'dan yangilash" "$back")" in
+        *"o‘rnatish"*)  float_term bx-pkg install ;;
+        *"o‘chirish"*)  float_term bx-pkg remove ;;
+        *Tizimni*)    float_term sh -c 'bx-update; read -rp "Yopish uchun Enter…"' ;;
+        *GitHub*)     float_term sh -c 'bx-sync; bx-sync status; read -rp "Yopish uchun Enter…"' ;;
+        "$back")      main ;;
+    esac
+}
+
+system_menu() {
+    case "$(menu "󰋽 Tizim" "󰓙  Tizim tekshiruvi (bx-doctor)" "󰍛  Jarayonlar (btop)" "󰋊  Disk joyi" \
+        "󰑓  Yuklanish holati" "󰊗  O‘yin rejimi" "$back")" in
+        *tekshiruvi*) float_term sh -c 'bx-doctor; read -rp "Yopish uchun Enter…"' ;;
+        *btop*)       float_term btop ;;
+        *Disk*)       float_term sh -c 'df -h -x tmpfs -x devtmpfs; echo; du -sh ~/* 2>/dev/null | sort -rh | head -15; read -rp "Enter…"' ;;
+        *Yuklanish*)  float_term sh -c 'bx-boot status; read -rp "Yopish uchun Enter…"' ;;
+        *"O‘yin"*)      bx-gamemode ;;
+        "$back")      main ;;
+    esac
+}
+
+main() {
+    case "$(menu "󰣇 Buxoro" "󰀻  Dasturlar" "󰏘  Ko‘rinish" "󰄀  Yozib olish" "󰂚  Boshqaruv markazi" \
+        "󰒓  Sozlash" "󰏖  O‘rnatish" "󰋽  Tizim" "󰌌  Tezkor tugmalar" "⏻  Quvvat")" in
+        *Dasturlar*)   fuzzel ;;
+        *"Ko‘rinish"*)   look ;;
+        *Yozib*)       capture ;;
+        *markazi*)     swaync-client -t -sw ;;
+        *Sozlash*)     setup ;;
+        *"O‘rnatish"*)   install_menu ;;
+        *Tizim*)       system_menu ;;
+        *tugmalar*)    bx-keys ;;
+        *Quvvat*)      bx-power ;;
+    esac
+}
+
+pkill -x fuzzel 2>/dev/null
+case "${1:-main}" in
+    main) main ;; apps) fuzzel ;; look) look ;; capture) capture ;; setup) setup ;;
+    install) install_menu ;; system) system_menu ;; power) bx-power ;;
+    *) sed -n '2,3p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

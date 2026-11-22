@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# bx-fonts — shriftlarni tekshirish va tuzatish
+#   bx-fonts        holat: qaysi shriftlar bor, terminal qaysi shriftni oladi
+#   bx-fonts fix    yetishmayotganlarini o'rnatish, keshni yangilash, terminalni qayta ishga tushirish
+# shellcheck disable=SC1112  # o‘zbekcha ‘ belgisi ataylab
+set -uo pipefail
+g=$'\e[1;32m' r=$'\e[1;31m' y=$'\e[1;33m' c=$'\e[1;36m' o=$'\e[0m'
+
+# shrift oilasi | paket | majburiymi
+FONTS=(
+    "JetBrainsMono Nerd Font|ttf-jetbrains-mono-nerd|1"
+    "Inter|inter-font|1"
+    "Noto Color Emoji|noto-fonts-emoji|1"
+    "Noto Sans|noto-fonts|1"
+    "DejaVu Sans Mono|ttf-dejavu|1"
+    "Noto Sans CJK JP|noto-fonts-cjk|0"
+)
+
+has_family() { # Inter 4 "Inter Variable" nomi bilan ham kelishi mumkin
+    fc-list : family | tr ',' '\n' | grep -ixF "$1" >/dev/null && return 0
+    [[ $1 == Inter ]] && fc-list : family | tr ',' '\n' | grep -ixF "Inter Variable" >/dev/null
+}
+
+missing=()
+status() {
+    printf '\n%sShriftlar%s\n' "$c" "$o"
+    local e fam pkg req
+    for e in "${FONTS[@]}"; do
+        IFS='|' read -r fam pkg req <<<"$e"
+        if has_family "$fam"; then
+            printf '  %s✓%s %-26s %s\n' "$g" "$o" "$fam" "($pkg)"
+        elif [[ $req == 1 ]]; then
+            printf '  %s✗%s %-26s yo‘q → %s\n' "$r" "$o" "$fam" "$pkg"; missing+=("$pkg")
+        else
+            printf '  %s!%s %-26s yo‘q (ixtiyoriy: %s)\n' "$y" "$o" "$fam" "$pkg"
+        fi
+    done
+    printf '\n%sAmalda ishlatiladigan shriftlar%s\n' "$c" "$o"
+    local term ui sp
+    term=$(fc-match -f '%{family[0]}' 'JetBrainsMono Nerd Font')
+    sp=$(fc-match -f '%{spacing}' 'JetBrainsMono Nerd Font')
+    ui=$(fc-match -f '%{family[0]}' 'Inter')
+    if [[ $sp == 100 || $sp == 90 ]]; then
+        printf '  %s✓%s Terminal: %s (monospace)\n' "$g" "$o" "$term"
+    else
+        printf '  %s✗%s Terminal: %s — monospace EMAS, harflar ustma-ust tushadi → bx-fonts fix\n' "$r" "$o" "$term"
+        missing+=(ttf-jetbrains-mono-nerd)
+    fi
+    printf '  %s✓%s Interfeys: %s\n' "$g" "$o" "$ui"
+    local fc="${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig/fonts.conf"
+    if grep -qs 'Buxoro shriftlari' "$fc"; then
+        printf '  %s✓%s fontconfig sozlamasi ulangan\n' "$g" "$o"
+    else
+        printf '  %s✗%s %s Buxoro sozlamasi emas → bx-fonts fix\n' "$r" "$o" "$fc"; NEED_LINK=1
+    fi
+}
+
+NEED_LINK=0
+status
+[[ ${1:-} == fix ]] || { (( ${#missing[@]} + NEED_LINK )) && printf '\n  Tuzatish: %sbx-fonts fix%s\n\n' "$c" "$o"; exit 0; }
+
+printf '\n%sTuzatilmoqda%s\n' "$c" "$o"
+if (( ${#missing[@]} )); then
+    mapfile -t missing < <(printf '%s\n' "${missing[@]}" | sort -u)
+    sudo pacman -S --needed --noconfirm "${missing[@]}" && printf '  %s✓%s o‘rnatildi: %s\n' "$g" "$o" "${missing[*]}"
+fi
+if (( NEED_LINK )); then
+    BX_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+    fc="${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig/fonts.conf"
+    mkdir -p "$(dirname "$fc")"
+    [[ -e $fc && ! -L $fc ]] && mv "$fc" "$fc.bx-backup-$(date +%Y%m%d-%H%M%S)"
+    ln -sfn "$BX_DIR/config/fontconfig/fonts.conf" "$fc" && printf '  %s✓%s fontconfig ulandi\n' "$g" "$o"
+fi
+fc-cache -f >/dev/null && printf '  %s✓%s shrift keshi yangilandi\n' "$g" "$o"
+if pgrep -f 'foot --server' >/dev/null; then
+    rm -f "${XDG_RUNTIME_DIR:-/run/user/$UID}/foot-${WAYLAND_DISPLAY:-wayland-1}.sock"
+    setsid -f foot --server >/dev/null 2>&1
+    printf '  %s✓%s terminal serveri qayta ishga tushdi (yangi oynalar yangi shriftda)\n' "$g" "$o"
+fi
+pkill -SIGUSR2 -x waybar 2>/dev/null || true
+status

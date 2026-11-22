@@ -25,10 +25,10 @@ background {
 # Soat
 label {
     monitor =
-    text = cmd[update:1000] date +"%H:%M"
+    text = cmd[update:1000] echo "<b>$(date +%H:%M)</b>"
     color = rgba({{fg.hex}}ff)
     font_size = 110
-    font_family = Inter Display Bold
+    font_family = Inter
     position = 0, 160
     halign = center
     valign = center

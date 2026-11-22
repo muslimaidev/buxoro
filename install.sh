@@ -92,7 +92,7 @@ fix_permissions() {
         fi
     fi
     # noexec bilan ulangan bo'limda (masalan, ba'zi /tmp yoki USB) skriptlar umuman ishlamaydi
-    if findmnt -no OPTIONS -T "$BX_DIR" 2>/dev/null | tr ',' '\n' | grep -qx noexec; then
+    if findmnt -no OPTIONS -T "$BX_DIR" 2>/dev/null | tr ',' '\n' | grep -x noexec >/dev/null; then
         die "$BX_DIR 'noexec' bo'limda joylashgan — skriptlar ishga tushmaydi. Papkani uy katalogiga ko'chiring: mv $BX_DIR ~/buxoro"
     fi
 }
@@ -156,29 +156,51 @@ migrate_audio() {
     systemctl --user enable --now pipewire.socket pipewire-pulse.socket wireplumber.service >/dev/null 2>&1 || true
 }
 
+# Paketlarni o'rnatish: avval hammasi bitta tranzaksiyada (tez); biror paket
+# to'qnashuv yoki xato bersa — birma-bir qayta urinish, shunda bitta muammoli
+# paket qolganlarini to'xtatib qo'ymaydi.
+FAILED_PKGS=()
+install_group() { # install_group "nom" paket...
+    local title=$1; shift
+    (( $# )) || return 0
+    if sudo pacman -S --needed --noconfirm "$@"; then
+        ok "$title: $# ta paket"
+        return 0
+    fi
+    warn "$title: umumiy o'rnatish muvaffaqiyatsiz — birma-bir urinib ko'rilmoqda"
+    local p
+    for p in "$@"; do
+        sudo pacman -S --needed --noconfirm "$p" >/dev/null 2>&1 || FAILED_PKGS+=("$p")
+    done
+}
+
+FONT_PKGS=(ttf-jetbrains-mono-nerd inter-font noto-fonts noto-fonts-emoji ttf-dejavu)
+
 install_packages() {
     step "Paketlar"
     sudo pacman -Sy --noconfirm >/dev/null
     migrate_audio
+    # Shriftlar birinchi va alohida: boshqa paketlarda muammo bo'lsa ham terminal va panel to'g'ri ko'rinadi
+    install_group "Shriftlar" "${FONT_PKGS[@]}"
+    fc-cache -f >/dev/null 2>&1 || true
     local want=() p
     mapfile -t want < <(read_list "$BX_DIR/packages.txt")
     (( LATEX )) && mapfile -t -O "${#want[@]}" want < <(read_list "$BX_DIR/packages-latex.txt")
     mapfile -t -O "${#want[@]}" want < <(choose_printer_drivers)
 
-    if lspci -d ::03xx 2>/dev/null | grep -qi nvidia; then
+    if lspci -d ::03xx 2>/dev/null | grep -i nvidia >/dev/null; then
         ok "NVIDIA karta topildi"
         if pacman -Qq linux >/dev/null 2>&1; then want+=(nvidia-open); else want+=(nvidia-open-dkms); fi
         want+=(nvidia-utils nvidia-prime libva-nvidia-driver)
     fi
-    lspci -d ::03xx 2>/dev/null | grep -qiE 'AMD|ATI' && want+=(vulkan-radeon)
+    lspci -d ::03xx 2>/dev/null | grep -iE 'AMD|ATI' >/dev/null && want+=(vulkan-radeon)
 
     # Rasmiy repozitoriyada bor-yo'qligini oldindan tekshiramiz: yo'qlari AUR navbatiga
     local repo=()
     for p in "${want[@]}"; do
         if pacman -Si "$p" >/dev/null 2>&1 || pacman -Sg "$p" >/dev/null 2>&1; then repo+=("$p"); else AUR_QUEUE+=("$p"); fi
     done
-    sudo pacman -S --needed --noconfirm "${repo[@]}"
-    ok "${#repo[@]} ta rasmiy paket"
+    install_group "Rasmiy paketlar" "${repo[@]}"
 
     mapfile -t -O "${#AUR_QUEUE[@]}" AUR_QUEUE < <(read_list "$BX_DIR/packages-aur.txt")
     if (( ${#AUR_QUEUE[@]} )); then
@@ -226,6 +248,7 @@ link "$BX_DIR/config/starship.toml"         "$CFG/starship.toml";         ok "st
 link "$BX_DIR/config/gtk-3.0/settings.ini"  "$CFG/gtk-3.0/settings.ini";  ok "gtk-3.0"
 link "$BX_DIR/config/gtk-4.0/settings.ini"  "$CFG/gtk-4.0/settings.ini";  ok "gtk-4.0"
 link "$BX_DIR/config/fontconfig/fonts.conf" "$CFG/fontconfig/fonts.conf"; ok "fontconfig"
+fc-cache -f >/dev/null 2>&1 || true
 ln -sfn "$BX_DIR/wallpapers/buxoro.png" "$CFG/hypr/wallpaper"
 
 step "Skriptlar (~/.local/bin)"
@@ -317,7 +340,7 @@ if command -v xdg-mime >/dev/null; then
     ok "PDF → Zathura, rasm → imv, video → mpv, papka → Thunar"
 fi
 
-if ! locale -a 2>/dev/null | grep -qi '^uz_UZ.utf8'; then
+if ! locale -a 2>/dev/null | grep -i '^uz_UZ.utf8' >/dev/null; then
     if ask "Sana va oy nomlari o'zbekcha bo'lishi uchun uz_UZ.UTF-8 lokali yaratilsinmi?"; then
         sudo sed -i 's/^#\s*uz_UZ.UTF-8/uz_UZ.UTF-8/' /etc/locale.gen && sudo locale-gen >/dev/null && ok "uz_UZ.UTF-8 yaratildi"
     fi
@@ -354,6 +377,12 @@ elif [[ $BOOT == ask ]]; then
 fi
 
 rm -f "${XDG_STATE_HOME:-$HOME/.local/state}/buxoro/sync-pending"   # bx-sync eslatmalari bajarildi
+
+if (( ${#FAILED_PKGS[@]} )); then
+    step "O'rnatilmagan paketlar"
+    warn "${FAILED_PKGS[*]}"
+    warn "Sababini ko'rish uchun: sudo pacman -S ${FAILED_PKGS[0]}"
+fi
 
 # ── Tayyor ────────────────────────────────────────────────────────────
 printf '\n%s✓ Buxoro o‘rnatildi.%s\n' "$c_ok" "$c_off"

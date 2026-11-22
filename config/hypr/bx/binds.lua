@@ -16,6 +16,7 @@ b(mod .. " + CTRL + Escape",  hl.dsp.exec_cmd(V.monitor), "Tizim monitori (btop)
 b(mod .. " + C",           hl.dsp.exec_cmd("bx-clip"),   "Bufer tarixi")
 b(mod .. " + period",      hl.dsp.exec_cmd("bx-emoji"),  "Emoji va belgilar")
 b(mod .. " + slash",       hl.dsp.exec_cmd("bx-keys"),   "Shu ro'yxat")
+b(mod .. " + ALT + space", hl.dsp.exec_cmd("bx-menu"),   "Buxoro menyusi (hamma narsa bir joyda)")
 
 -- ── Oynalar ──────────────────────────────────────────────────────────
 b(mod .. " + Q",           hl.dsp.window.close(),       "Oynani yopish")
@@ -104,6 +105,8 @@ b("Print",                 hl.dsp.exec_cmd("bx-shot region"), "Skrinshot: hudud"
 b("SHIFT + Print",         hl.dsp.exec_cmd("bx-shot screen"), "Skrinshot: butun ekran")
 b(mod .. " + Print",       hl.dsp.exec_cmd("bx-shot edit"),   "Skrinshot: hudud + tahrirlash")
 b(mod .. " + SHIFT + S",   hl.dsp.exec_cmd("bx-shot region"), "Skrinshot: hudud")
+b(mod .. " + ALT + Print",  hl.dsp.exec_cmd("bx-record region"), "Ekran yozuvi: hudud (qayta bosish — to'xtatish)")
+b(mod .. " + CTRL + Print", hl.dsp.exec_cmd("bx-record screen"), "Ekran yozuvi: butun ekran")
 
 -- ── Multimedia tugmalari (ekran qulflangan bo'lsa ham ishlaydi) ──────
 -- SwayOSD ekranda chiroyli ko'rsatkich chiqaradi

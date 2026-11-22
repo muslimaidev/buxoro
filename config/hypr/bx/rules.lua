@@ -30,6 +30,15 @@ hl.window_rule({
     size   = { "monitor_w*0.45", "monitor_h*0.55" },
 })
 
+-- Buxoro menyusidan ochiladigan terminal oynalari (paketlar, tekshiruv, Wi-Fi)
+hl.window_rule({
+    name  = "float-bx-terminal",
+    match = { class = "^(bx-float)$" },
+    float  = true,
+    center = true,
+    size   = { "monitor_w*0.62", "monitor_h*0.68" },
+})
+
 -- Fayl tanlash dialoglari
 hl.window_rule({
     name  = "float-dialogs",

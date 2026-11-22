@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# bx-pkg — paketlarni qidirib o'rnatish/o'chirish (fzf, tavsif oynasi bilan)
+#   bx-pkg install   rasmiy repozitoriya + AUR (paru/yay bo'lsa)   Tab — bir nechtasini belgilash
+#   bx-pkg remove    o'zingiz o'rnatgan paketlar
+# shellcheck disable=SC1112  # o‘zbekcha ‘ belgisi ataylab
+set -uo pipefail
+
+helper=""; command -v paru >/dev/null && helper=paru; [[ -z $helper ]] && command -v yay >/dev/null && helper=yay
+FZF_COMMON=(--multi --height=100% --layout=reverse --border=rounded --info=inline-right
+            --preview-window='right,58%,border-left,wrap' --bind 'ctrl-/:toggle-preview'
+            --header 'Tab — belgilash · Enter — tasdiqlash · Esc — chiqish · Ctrl+/ — tavsif')
+
+pause() { echo; read -rp "Yopish uchun Enter…" _; }
+
+case "${1:-install}" in
+    install)
+        if [[ -n $helper ]]; then
+            src() { pacman -Slq; "$helper" -Slqa 2>/dev/null; }
+            preview="pacman -Si {1} 2>/dev/null || $helper -Si {1}"
+        else
+            src() { pacman -Slq; }
+            preview="pacman -Si {1}"
+        fi
+        mapfile -t pkgs < <(src | sort -u | fzf "${FZF_COMMON[@]}" --prompt '󰏗  O‘rnatish › ' --preview "$preview")
+        (( ${#pkgs[@]} )) || exit 0
+        echo ":: O‘rnatilmoqda: ${pkgs[*]}"
+        if [[ -n $helper ]]; then "$helper" -S --needed "${pkgs[@]}"; else sudo pacman -S --needed "${pkgs[@]}"; fi
+        pause ;;
+    remove)
+        mapfile -t pkgs < <(pacman -Qqe | fzf "${FZF_COMMON[@]}" --prompt '󰆴  O‘chirish › ' --preview 'pacman -Qi {1}')
+        (( ${#pkgs[@]} )) || exit 0
+        echo ":: O‘chirilmoqda (bog‘liqliklari bilan): ${pkgs[*]}"
+        sudo pacman -Rns "${pkgs[@]}"
+        pause ;;
+    *) sed -n '2,4p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

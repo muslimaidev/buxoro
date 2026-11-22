@@ -103,6 +103,14 @@ window#waybar.empty #window { padding: 0; }
 #custom-printer { color: @accent2; }
 #custom-printer.error { color: @red; }
 #custom-updates { color: @green; }
+#custom-recording {
+  color: @bg;
+  background: @red;
+  border-radius: 9px;
+  margin: 5px 4px;
+  padding: 0 10px;
+  font-weight: 700;
+}
 #mpris { color: @subtext; font-weight: 500; }
 #mpris.paused { color: @muted; }
 

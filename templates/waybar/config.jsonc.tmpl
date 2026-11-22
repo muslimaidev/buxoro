@@ -11,7 +11,7 @@
   "reload_style_on_change": true,
 
   "modules-left": ["custom/logo", "hyprland/workspaces", "hyprland/window"],
-  "modules-center": ["mpris", "clock", "custom/updates"],
+  "modules-center": ["custom/recording", "mpris", "clock", "custom/updates"],
   "modules-right": [
     "tray",
     "custom/printer",
@@ -29,8 +29,8 @@
 
   "custom/logo": {
     "format": "󰣇",
-    "tooltip-format": "Chap: dasturlar · O'ng: mavzular · O'rta: fon rasmlari",
-    "on-click": "pkill -x fuzzel || fuzzel",
+    "tooltip-format": "Chap: Buxoro menyusi · O'ng: mavzular · O'rta: fon rasmlari",
+    "on-click": "bx-menu",
     "on-click-right": "bx-picker theme",
     "on-click-middle": "bx-picker wallpaper"
   },
@@ -193,6 +193,14 @@
     "interval": 10,
     "on-click": "bx-printer menu",
     "on-click-right": "system-config-printer"
+  },
+
+  "custom/recording": {
+    "exec": "bx-record status",
+    "return-type": "json",
+    "interval": 1,
+    "signal": 10,
+    "on-click": "bx-record stop"
   },
 
   "custom/updates": {

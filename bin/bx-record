@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# bx-record — ekran yozuvi (wf-recorder). Qayta chaqirilsa — to'xtaydi.
+#   bx-record region | screen   boshlash (yoki to'xtatish)
+#   bx-record stop
+#   bx-record status            Waybar uchun JSON
+# Ovoz: BX_RECORD_AUDIO=1 bx-record screen   (tizim ovozi bilan)
+# shellcheck disable=SC1112  # o‘zbekcha ‘ belgisi ataylab
+set -uo pipefail
+dir="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
+pidf="${XDG_RUNTIME_DIR:-/tmp}/bx-record.pid"
+filef="${XDG_RUNTIME_DIR:-/tmp}/bx-record.file"
+
+running() { [[ -f $pidf ]] && kill -0 "$(cat "$pidf")" 2>/dev/null; }
+signal_bar() { pkill -RTMIN+10 -x waybar 2>/dev/null || true; }
+
+stop() {
+    running || return 0
+    kill -INT "$(cat "$pidf")"
+    for _ in $(seq 30); do running || break; sleep 0.1; done
+    rm -f "$pidf"; signal_bar
+    local f; f=$(cat "$filef" 2>/dev/null)
+    notify-send -a buxoro -i media-record "Ekran yozuvi saqlandi" "${f/#$HOME/\~}"
+}
+
+start() {
+    command -v wf-recorder >/dev/null || { notify-send -a buxoro "wf-recorder o‘rnatilmagan" "sudo pacman -S wf-recorder"; exit 1; }
+    mkdir -p "$dir"
+    local f; f="$dir/$(date +%Y-%m-%d_%H-%M-%S).mp4"
+    local args=(-f "$f" -c libx264 -p preset=veryfast -p crf=23 -x yuv420p)
+    if [[ $1 == region ]]; then
+        local geom; geom=$(slurp -d -b '00000066' -w 2) || exit 0
+        args+=(-g "$geom")
+    else
+        local out; out=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
+        [[ -n $out ]] && args+=(-o "$out")
+    fi
+    [[ ${BX_RECORD_AUDIO:-0} == 1 ]] && args+=(--audio="$(pactl get-default-sink).monitor")
+    echo "$f" > "$filef"
+    setsid -f wf-recorder "${args[@]}" >/dev/null 2>&1
+    sleep 0.3
+    pgrep -n -x wf-recorder > "$pidf"
+    signal_bar
+    notify-send -a buxoro -i media-record "Ekran yozilmoqda" "To‘xtatish: SUPER + ALT + Print yoki paneldagi qizil nuqta"
+}
+
+case "${1:-region}" in
+    region|screen) if running; then stop; else start "$1"; fi ;;
+    stop)          stop ;;
+    status)
+        if running; then
+            secs=$(( $(date +%s) - $(stat -c %Y "$pidf") ))
+            printf '{"text":"󰑊 %02d:%02d","tooltip":"Ekran yozilmoqda — to‘xtatish uchun bosing","class":"recording"}\n' $((secs / 60)) $((secs % 60))
+        else
+            echo '{"text":""}'
+        fi ;;
+    *) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

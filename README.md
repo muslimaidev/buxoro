@@ -43,6 +43,8 @@ Poyi Kalon ilhomidagi dizayn · Hyprland 0.55+ Lua konfiguratsiyasi · boshqaruv
 | Fayllar | **yazi**, Thunar | yazi asinxron va Rust’da yozilgan |
 | Fon rasmi | **awww** | Silliq o‘tishlar: kursordan o‘suvchi doira, to‘lqin, chiziq; GIF animatsiyalar |
 | Galereya | **rofi** + **bx-picker** | Mavzu kartochkalari va fon rasmlari to‘ri |
+| Yagona menyu | **bx-menu** | Ko‘rinish, yozib olish, sozlash, paket o‘rnatish, tizim — hammasi bir joyda |
+| Ekran yozuvi | **wf-recorder** + **bx-record** | Hudud yoki butun ekran, panelda qizil vaqt ko‘rsatkichi |
 | Avtomatik ranglar | **bx-colors** | Istalgan rasmdan palitra (Material You uslubida, qo‘shimcha dasturisiz) |
 
 ## Nega tez
@@ -62,7 +64,7 @@ Raqamlarni o‘zingiz tekshiring: **`bx-doctor`** zsh va Neovim ishga tushish va
 ## O‘rnatish
 
 ```bash
-git clone https://github.com/muslimaidev/buxoro.git
+git clone https://github.com/<foydalanuvchi>/buxoro ~/buxoro
 cd ~/buxoro
 ./install.sh            # savollar bilan
 ./install.sh --latex    # LaTeX bilan (~1.5 GB)
@@ -96,6 +98,7 @@ Bu ro‘yxatni istalgan vaqtda **`SUPER + /`** bilan ochish mumkin. U `bx/binds.
 | `SUPER + C` | Bufer tarixi |
 | `SUPER + period` | Emoji va belgilar |
 | `SUPER + slash` | Shu ro'yxat |
+| `SUPER + ALT + space` | Buxoro menyusi (hamma narsa bir joyda) |
 | `SUPER + Q` | Oynani yopish |
 | `SUPER + SHIFT + Q` | Oynani majburan yopish |
 | `SUPER + F` | To'liq ekran |
@@ -138,6 +141,8 @@ Bu ro‘yxatni istalgan vaqtda **`SUPER + /`** bilan ochish mumkin. U `bx/binds.
 | `SHIFT + Print` | Skrinshot: butun ekran |
 | `SUPER + Print` | Skrinshot: hudud + tahrirlash |
 | `SUPER + SHIFT + S` | Skrinshot: hudud |
+| `SUPER + ALT + Print` | Ekran yozuvi: hudud (qayta bosish — to'xtatish) |
+| `SUPER + CTRL + Print` | Ekran yozuvi: butun ekran |
 | `Fn + ovoz / yorug'lik tugmalari` | Ovoz, mikrofon va yorug'lik (ekranda ko'rsatkich bilan) |
 
 Klaviatura tili **Alt + Shift** bilan almashtiriladi: inglizcha → o‘zbekcha (lotin) → ruscha.
@@ -152,6 +157,22 @@ Klaviatura tili **Alt + Shift** bilan almashtiriladi: inglizcha → o‘zbekcha 
 - **Ovoz slayderi.** Har bir dastur uchun alohida sozlash mumkin.
 - **Yorug‘lik slayderi** va **musiqa pleyeri** (Firefox, Spotify, mpv…).
 - **Bildirishnomalar tarixi** guruhlarga ajratilgan holda.
+
+## Buxoro menyusi
+
+**`SUPER + ALT + Space`** (yoki paneldagi logotipni chap tugma bilan bosish) — hamma narsa bitta menyuda:
+
+| Bo‘lim | Ichida |
+| --- | --- |
+| Ko‘rinish | Mavzular va fon galereyalari, tungi/kunduzgi, ranglar rasmdan, o‘tish effekti, slayd-shou, tungi yorug‘lik |
+| Yozib olish | Skrinshot (hudud, ekran, tahrirlash), **ekran yozuvi**, ekrandan rang olish |
+| Sozlash | Wi-Fi, Bluetooth, ovoz, monitorlar, printer, shriftlar, tugmalar, GTK |
+| O‘rnatish | **Paket o‘rnatish/o‘chirish** (qidiruv va tavsif bilan, AUR ham), tizimni yangilash, Buxoro’ni GitHub’dan yangilash |
+| Tizim | `bx-doctor`, btop, disk joyi, yuklanish holati, o‘yin rejimi |
+
+**Paketlar (`bx-pkg`).** Barcha paketlar ro‘yxatida yozib qidirasiz. O‘ng tomonda tavsif ko‘rinadi, `Tab` bilan bir nechtasini belgilab, `Enter` bilan o‘rnatasiz.
+
+**Ekran yozuvi (`bx-record`).** `SUPER + ALT + Print` hududni, `SUPER + CTRL + Print` butun ekranni yozadi. Yozuv paytida panelda qizil vaqt ko‘rsatkichi turadi, uni bosish yoki tugmani qayta bosish yozuvni to‘xtatadi. Fayllar `~/Videos/Recordings` papkasiga saqlanadi. Tizim ovozi bilan yozish uchun: `BX_RECORD_AUDIO=1 bx-record screen`.
 
 ## Mavzu va fon galereyasi
 
@@ -231,7 +252,11 @@ Mavzu almashtirilganda Hyprland, Waybar, swaync, SwayOSD, rofi, fuzzel, foot, hy
 
 | Buyruq | Vazifasi |
 | --- | --- |
+| `bx-menu` | Yagona menyu |
 | `bx-doctor` | Tizim tekshiruvi va tezlik o‘lchovlari |
+| `bx-fonts` | Shriftlarni tekshirish; `bx-fonts fix` — tuzatish |
+| `bx-pkg` | Paket o‘rnatish/o‘chirish: `install`, `remove` |
+| `bx-record` | Ekran yozuvi: `region`, `screen`, `stop` |
 | `bx-picker` | Galereya: `theme`, `wallpaper` |
 | `bx-theme` | Mavzu: `apply`, `auto`, `toggle`, `list` |
 | `bx-colors` | Rasmdan palitra yaratish |
@@ -292,6 +317,7 @@ Asosiy dasturlarni `config/hypr/bx/vars.lua` da almashtirish mumkin.
 | Muammo | Yechim |
 | --- | --- |
 | Biror narsa ishlamasa | `bx-doctor` |
+| Terminalda harflar ustma-ust tushsa, yozuv ko‘rinmasa yoki to‘rtburchaklar chiqsa | `bx-fonts fix` — yetishmayotgan shriftlarni o‘rnatadi va terminalni qayta ishga tushiradi |
 | Hyprland xato ko‘rsatsa | `hyprctl configerrors` |
 | Yorug‘lik slayderi ishlamasa | `ls /sys/class/backlight` natijasini `config/swaync/config.json` dagi `device` ga yozing |
 | Login ekrani yoqmasa | TTY2 ga o‘ting (Ctrl+Alt+F2), `bx-greeter remove` va eski login manager’ni yoqing |
