@@ -49,6 +49,13 @@ load() {
 }
 
 render() {
+    # Oldindan tekshiruv: chiqish papkasiga yozib bo'lmasa — tushunarli xabar
+    if ! [[ -w $BX_DIR/config ]] || [[ -n $(find "$BX_DIR/config" "$BX_DIR/templates" -maxdepth 3 ! -user "$(id -un)" -print -quit 2>/dev/null) ]]; then
+        local bad; bad=$(find "$BX_DIR/config" -maxdepth 3 ! -user "$(id -un)" -print -quit 2>/dev/null)
+        die "$BX_DIR ichidagi fayllarga yozib bo'lmaydi${bad:+ (masalan: $bad)}.
+Papka 'sudo' bilan yaratilgan bo'lsa, egasini tuzating:
+    sudo chown -R $(id -un):$(id -gn) $BX_DIR"
+    fi
     local sedf; sedf="$(mktemp)"
     for k in "${COLOR_KEYS[@]}"; do
         local h=${!k}

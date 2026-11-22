@@ -62,7 +62,7 @@ Raqamlarni o‘zingiz tekshiring: **`bx-doctor`** zsh va Neovim ishga tushish va
 ## O‘rnatish
 
 ```bash
-git clone https://github.com/muslimaidev/buxoro.git
+git clone https://github.com/<foydalanuvchi>/buxoro ~/buxoro
 cd ~/buxoro
 ./install.sh            # savollar bilan
 ./install.sh --latex    # LaTeX bilan (~1.5 GB)

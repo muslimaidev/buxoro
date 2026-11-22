@@ -50,6 +50,30 @@ read_list() { grep -vE '^\s*(#|$)' "$1"; }
 [[ $EUID -ne 0 ]] || die "Skriptni oddiy foydalanuvchi sifatida ishga tushiring (sudo o'zi so'raladi)."
 command -v pacman >/dev/null || die "Bu skript faqat Arch Linux (va unga asoslangan tizimlar) uchun."
 
+# ── Yozish huquqini tekshirish ────────────────────────────────────────
+# Repozitoriya "sudo unzip" / "sudo git clone" bilan yaratilgan bo'lsa, fayllar root'ga
+# tegishli bo'ladi va mavzu fayllarini yozib bo'lmaydi ("Permission denied").
+check_ownership() {
+    local me grp bad=() d f
+    me=$(id -un); grp=$(id -gn)
+    for d in "$BX_DIR" "$CFG" "$HOME/.local" "${XDG_STATE_HOME:-$HOME/.local/state}" "${XDG_CACHE_HOME:-$HOME/.cache}"; do
+        [[ -e $d ]] || continue
+        f=$(find "$d" -maxdepth 4 -xdev ! -user "$me" -print -quit 2>/dev/null)
+        [[ -n $f ]] && bad+=("$d")
+    done
+    (( ${#bad[@]} )) || return 0
+    step "Ruxsat muammosi"
+    for d in "${bad[@]}"; do
+        warn "$d ichida $me ga tegishli bo'lmagan fayllar bor (masalan: $(find "$d" -maxdepth 4 -xdev ! -user "$me" -print -quit 2>/dev/null))"
+    done
+    if ask "Egasini $me ga o'zgartirib tuzatamizmi? (sudo chown -R $me:$grp …)"; then
+        sudo chown -R "$me:$grp" "${bad[@]}" && ok "Tuzatildi"
+    else
+        die "Qo'lda tuzating: sudo chown -R $me:$grp ${bad[*]}"
+    fi
+}
+check_ownership
+
 # ── 1. Paketlar ───────────────────────────────────────────────────────
 AUR_HELPER=""
 AUR_QUEUE=()
@@ -160,6 +184,7 @@ link() { # link <manba> <manzil>
 }
 
 step "Mavzu fayllarini yaratish"
+mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/buxoro"
 "$BX_DIR/bin/bx-theme" render "$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/buxoro/theme" 2>/dev/null || echo buxoro)"
 mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/buxoro"
 [[ -f "${XDG_STATE_HOME:-$HOME/.local/state}/buxoro/theme" ]] || echo buxoro > "${XDG_STATE_HOME:-$HOME/.local/state}/buxoro/theme"
