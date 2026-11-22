@@ -208,7 +208,7 @@ theme_limine() {
         {print}' > "$tmp.body"
     # wallpaper yo'li limine.conf joylashgan bo'limga nisbatan: boot():/<nisbiy yo'l>
     local mnt rel
-    mnt=$(findmnt -no TARGET -T "$dir")
+    mnt=$(findmnt -no TARGET -T "$dir" 2>/dev/null || echo "$dir")
     rel="${dir#"$mnt"}"
     sed "s|boot():/buxoro-boot.png|boot():${rel}/buxoro-boot.png|" "$BX_DIR/boot/grub/limine-theme.conf" > "$tmp"
     cat "$tmp" "$tmp.body" | sudo tee "$conf" >/dev/null

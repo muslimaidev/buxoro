@@ -21,7 +21,7 @@ THEME_DIRS=("$USER_THEMES" "$BX_DIR/themes" "$STATE_DIR/themes")
 mkdir -p "$STATE_DIR"
 
 COLOR_KEYS=(bg bg_alt surface overlay muted subtext fg accent accent2 gold red green yellow purple orange)
-TEXT_KEYS=(name mode gtk_theme color_scheme icon_theme wallpaper prefer_dark)
+TEXT_KEYS=(name mode gtk_theme color_scheme icon_theme wallpaper prefer_dark term_size)
 
 die() { echo "bx-theme: $*" >&2; exit 1; }
 current() { cat "$STATE_DIR/theme" 2>/dev/null || echo buxoro; }
@@ -43,6 +43,9 @@ load() {
     # shellcheck source=/dev/null
     source "$file"
     prefer_dark=0; [[ ${mode:-dark} == dark ]] && prefer_dark=1
+    # Terminal shrift o'lchami (bx-fonts size N): shaxsiy sozlama, mavzudan mustaqil
+    term_size=$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/buxoro/term-size" 2>/dev/null || true)
+    [[ $term_size =~ ^[0-9]+([.][0-9]+)?$ ]] || term_size=13.5
     for k in "${COLOR_KEYS[@]}"; do
         [[ ${!k:-} =~ ^[0-9a-fA-F]{6}$ ]] || die "$1.theme: '$k' rangi noto'g'ri yoki yo'q"
     done
