@@ -102,7 +102,7 @@ pf2() { # pf2 <fc-pattern> <o'lcham> <chiqish>
 theme_grub() {
     local dir=/boot/grub/themes/buxoro
     sudo mkdir -p "$dir"
-    sudo cp "$BX_DIR"/boot/grub/{background.png,select_c.png,select_e.png,select_w.png} "$dir/"
+    sudo install -m644 -t "$dir" "$BX_DIR"/boot/grub/{background.png,select_c.png,select_e.png,select_w.png}
     local reg small title mono
     reg=$(pf2 "Inter:style=Regular" 20 "$dir/inter-20.pf2")
     small=$(pf2 "Inter:style=Regular" 15 "$dir/inter-15.pf2")
@@ -130,7 +130,7 @@ theme_limine() {
     local conf; conf=$(limine_conf)
     local dir; dir=$(dirname "$conf")
     backup "$conf"
-    sudo cp "$BX_DIR/boot/grub/background.png" "$dir/buxoro-boot.png"
+    sudo install -m644 "$BX_DIR/boot/grub/background.png" "$dir/buxoro-boot.png"
     local keys="timeout|interface_branding|interface_branding_colour|interface_branding_color|interface_help_hidden|wallpaper|wallpaper_style|term_background|term_foreground|term_background_bright|term_foreground_bright|term_palette|term_palette_bright|term_margin|term_margin_gradient"
     local tmp; tmp=$(mktemp)
     # Eski Buxoro blokini va takrorlanadigan global sozlamalarni olib tashlab, yangisini boshiga qo'yamiz
@@ -179,7 +179,7 @@ cmd_splash() {
     step "Plymouth: Buxoro splash"
     sudo pacman -S --needed --noconfirm plymouth >/dev/null && ok "plymouth o'rnatilgan"
     sudo mkdir -p /usr/share/plymouth/themes/buxoro
-    sudo cp "$BX_DIR"/boot/plymouth/buxoro/* /usr/share/plymouth/themes/buxoro/
+    sudo install -m644 -t /usr/share/plymouth/themes/buxoro "$BX_DIR"/boot/plymouth/buxoro/*
     ok "Mavzu nusxalandi"
 
     local mk=/etc/mkinitcpio.conf

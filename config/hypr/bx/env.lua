@@ -1,5 +1,16 @@
 local U = require("bx.util")
 
+-- bx-* skriptlari ~/.local/bin da. Arch uni PATH ga standart qo'shmaydi, shuning uchun
+-- tugmalar, panel va bildirishnomalar markazidagi buyruqlar topilishi uchun qo'shamiz.
+do
+    local home = os.getenv("HOME") or ""
+    local path = os.getenv("PATH") or "/usr/local/bin:/usr/bin"
+    local bin = home .. "/.local/bin"
+    if not (":" .. path .. ":"):find(":" .. bin .. ":", 1, true) then
+        hl.env("PATH", bin .. ":" .. path)
+    end
+end
+
 -- Kursor
 hl.env("XCURSOR_THEME", "Bibata-Modern-Classic")
 hl.env("XCURSOR_SIZE", "24")

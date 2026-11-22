@@ -76,6 +76,9 @@ cmd_sync() {
 apply_changes() {
     local old=$1 new=$2 changes=$3 extra=()
 
+    # Bajarilish ruxsatini tiklash (GitHub sayti orqali tahrirlanganda yo'qolishi mumkin)
+    chmod +x "$BX_DIR"/bin/* "$BX_DIR"/install.sh 2>/dev/null || true
+
     # Yangi skriptlarni ~/.local/bin ga ulash
     local s
     for s in "$BX_DIR"/bin/bx-*; do

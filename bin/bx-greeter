@@ -9,17 +9,17 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 ok()   { printf '   \e[1;32m✓\e[0m %s\n' "$*"; }
 warn() { printf '   \e[1;33m!\e[0m %s\n' "$*"; }
 
-install() {
+greeter_install() {
     sudo pacman -S --needed --noconfirm greetd greetd-regreet cage >/dev/null && ok "greetd, ReGreet, cage o'rnatildi"
 
     sudo mkdir -p /usr/share/backgrounds/buxoro /etc/greetd
-    sudo cp "$BX_DIR/wallpapers/buxoro.png" /usr/share/backgrounds/buxoro/buxoro.png
-    sudo chmod 644 /usr/share/backgrounds/buxoro/buxoro.png
+    # install -m 644: greeter foydalanuvchisi o'qiy olishi uchun (umask 077 bo'lsa ham)
+    sudo install -Dm644 "$BX_DIR/wallpapers/buxoro.png" /usr/share/backgrounds/buxoro/buxoro.png
 
     local f
     for f in config.toml regreet.toml regreet.css; do
         [[ -f /etc/greetd/$f ]] && sudo cp -a "/etc/greetd/$f" "/etc/greetd/$f.bx-backup-$STAMP"
-        sudo cp "$BX_DIR/boot/greetd/$f" "/etc/greetd/$f"
+        sudo install -m644 "$BX_DIR/boot/greetd/$f" "/etc/greetd/$f"
     done
     ok "/etc/greetd sozlandi"
 
@@ -33,19 +33,19 @@ install() {
     sudo systemctl enable greetd.service >/dev/null 2>&1 && ok "greetd yoqildi — keyingi yuklanishda Buxoro login ekrani chiqadi"
 }
 
-preview() {
+greeter_preview() {
     command -v regreet >/dev/null || { echo "Avval: bx-greeter install"; exit 1; }
     regreet --demo --logs "${XDG_RUNTIME_DIR:-/tmp}/regreet.log" --config "$BX_DIR/boot/greetd/regreet.toml" --style "$BX_DIR/boot/greetd/regreet.css"
 }
 
-remove() {
+greeter_remove() {
     sudo systemctl disable greetd.service >/dev/null 2>&1 && ok "greetd o'chirildi"
     warn "Oldingi login manager'ni yoqing, masalan: sudo systemctl enable sddm"
 }
 
 case "${1:-install}" in
-    install) install ;;
-    preview) preview ;;
-    remove)  remove ;;
+    install) greeter_install ;;
+    preview) greeter_preview ;;
+    remove)  greeter_remove ;;
     *) sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

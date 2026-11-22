@@ -74,6 +74,30 @@ check_ownership() {
 }
 check_ownership
 
+# ── Bajarilish ruxsatlari ─────────────────────────────────────────────
+# Fayllar brauzer, grafik arxiv dasturi yoki GitHub sayti orqali o'tganda "+x"
+# belgisi yo'qoladi va skriptlar "Permission denied" beradi. Har safar tiklaymiz.
+fix_permissions() {
+    local f fixed=()
+    for f in "$BX_DIR"/install.sh "$BX_DIR"/bin/* "$BX_DIR"/assets/*.py; do
+        [[ -f $f && ! -x $f ]] || continue
+        chmod +x "$f" || die "Ruxsat berib bo'lmadi: $f (sudo chown -R $(id -un) $BX_DIR)"
+        fixed+=("${f#"$BX_DIR"/}")
+    done
+    if (( ${#fixed[@]} )); then
+        step "Bajarilish ruxsatlari"
+        ok "${#fixed[@]} ta skriptga +x berildi: ${fixed[*]}"
+        if git -C "$BX_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+            warn "GitHub'da ham tuzatish uchun:  cd $BX_DIR && git add -A && git commit -m 'Skriptlarga +x' && git push"
+        fi
+    fi
+    # noexec bilan ulangan bo'limda (masalan, ba'zi /tmp yoki USB) skriptlar umuman ishlamaydi
+    if findmnt -no OPTIONS -T "$BX_DIR" 2>/dev/null | tr ',' '\n' | grep -qx noexec; then
+        die "$BX_DIR 'noexec' bo'limda joylashgan — skriptlar ishga tushmaydi. Papkani uy katalogiga ko'chiring: mv $BX_DIR ~/buxoro"
+    fi
+}
+fix_permissions
+
 # ── 1. Paketlar ───────────────────────────────────────────────────────
 AUR_HELPER=""
 AUR_QUEUE=()

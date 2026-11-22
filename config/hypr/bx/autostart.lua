@@ -1,7 +1,7 @@
 -- Hyprland ishga tushganda bir marta bajariladi (qayta yuklashda emas).
 hl.on("hyprland.start", function()
     -- systemd/dbus xizmatlari (bx-sync taymeri, portal) Hyprland'ni topishi uchun
-    hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE")
+    hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE PATH")
     hl.exec_cmd("systemctl --user start hyprpolkitagent")  -- parol so'rovchi oyna
     -- Fon rasmi: awww (silliq o'tish effektlari), so'ng oxirgi rasmni tiklash
     hl.exec_cmd("(command -v awww-daemon >/dev/null && awww-daemon || swww-daemon) & sleep 0.5; bx-wall restore")
