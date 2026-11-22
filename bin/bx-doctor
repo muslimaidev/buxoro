@@ -38,6 +38,17 @@ pgrep -f 'foot --server' >/dev/null && ok "foot server (terminal bir zumda ochil
 pgrep -f hyprpolkitagent >/dev/null && ok "polkit agent (parol oynasi)" || bad "polkit agent ishlamayapti"
 pgrep -f 'cliphist store' >/dev/null && ok "Bufer tarixi" || meh "cliphist ishlamayapti"
 
+head_ "Ovoz"
+if command -v pactl >/dev/null; then
+    srv=$(pactl info 2>/dev/null | sed -n 's/^Server Name: //p')
+    case "$srv" in
+        *PipeWire*) ok "PipeWire ishlayapti ($srv)" ;;
+        "")         bad "Ovoz serveri javob bermayapti → systemctl --user restart pipewire pipewire-pulse wireplumber" ;;
+        *)          bad "Eski server: $srv → ./install.sh (PulseAudio'ni PipeWire bilan almashtiradi)" ;;
+    esac
+fi
+pacman -Qq pulseaudio >/dev/null 2>&1 && meh "pulseaudio paketi hali o'rnatilgan (pipewire-pulse bilan to'qnashadi)"
+
 head_ "Tezlik"
 if command -v zsh >/dev/null; then
     t=$(ms zsh -i -c exit)

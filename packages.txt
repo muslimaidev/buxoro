@@ -33,6 +33,7 @@ playerctl
 wtype
 pipewire
 pipewire-pulse
+pipewire-alsa
 wireplumber
 pavucontrol
 networkmanager

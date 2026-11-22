@@ -90,9 +90,28 @@ choose_printer_drivers() {
     done
 }
 
+# PulseAudio → PipeWire. pipewire-pulse PulseAudio bilan to'qnashadi, --noconfirm esa
+# "o'chirilsinmi?" savoliga "yo'q" deydi va o'rnatish to'xtaydi. Shuning uchun avval
+# PulseAudio'ni xavfsiz olib tashlaymiz: dasturlar baribir ishlaydi, chunki
+# pipewire-pulse xuddi shu PulseAudio interfeysini (libpulse) taqdim etadi.
+migrate_audio() {
+    local old=() p
+    for p in pulseaudio pulseaudio-bluetooth pulseaudio-alsa pulseaudio-jack pulseaudio-zeroconf pulseaudio-equalizer pulseaudio-lirc; do
+        pacman -Qq "$p" >/dev/null 2>&1 && old+=("$p")
+    done
+    (( ${#old[@]} )) || return 0
+    step "Ovoz tizimi: PulseAudio → PipeWire"
+    systemctl --user disable --now pulseaudio.service pulseaudio.socket >/dev/null 2>&1 || true
+    sudo pacman -Rdd --noconfirm "${old[@]}" >/dev/null && ok "Olib tashlandi: ${old[*]}"
+    sudo pacman -S --needed --noconfirm pipewire pipewire-pulse pipewire-alsa wireplumber >/dev/null &&
+        ok "PipeWire o'rnatildi (PulseAudio dasturlari o'zgarishsiz ishlaydi)"
+    systemctl --user enable --now pipewire.socket pipewire-pulse.socket wireplumber.service >/dev/null 2>&1 || true
+}
+
 install_packages() {
     step "Paketlar"
     sudo pacman -Sy --noconfirm >/dev/null
+    migrate_audio
     local want=() p
     mapfile -t want < <(read_list "$BX_DIR/packages.txt")
     (( LATEX )) && mapfile -t -O "${#want[@]}" want < <(read_list "$BX_DIR/packages-latex.txt")
@@ -198,7 +217,7 @@ if (( PACKAGES )); then
     for svc in NetworkManager bluetooth power-profiles-daemon cups.socket cups-browsed avahi-daemon swayosd-libinput-backend; do
         if sudo systemctl enable --now "$svc" >/dev/null 2>&1; then ok "$svc"; else warn "$svc yoqilmadi"; fi
     done
-    systemctl --user enable --now pipewire-pulse.socket wireplumber.service >/dev/null 2>&1 || true
+    systemctl --user enable --now pipewire.socket pipewire-pulse.socket wireplumber.service >/dev/null 2>&1 || true
 
     # Tarmoq printerlarini nomi bilan topish (mDNS)
     if ! grep -q 'mdns_minimal' /etc/nsswitch.conf; then
