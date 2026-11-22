@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# bx-nightlight — tungi yorug'lik (hyprsunset, 4500K)
+if pgrep -x hyprsunset >/dev/null; then
+    pkill -x hyprsunset
+    notify-send -a buxoro -i weather-clear "Tungi yorug‘lik o‘chirildi"
+else
+    setsid -f hyprsunset -t "${1:-4500}" >/dev/null 2>&1
+    notify-send -a buxoro -i weather-clear-night "Tungi yorug‘lik yoqildi" "${1:-4500}K"
+fi

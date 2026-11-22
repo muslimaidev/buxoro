@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+# bx-theme — Buxoro mavzu boshqaruvchisi
+#   bx-theme apply [nom]   mavzuni qo'llash (shablonlar + ilovalarni yangilash)
+#   bx-theme auto [rasm]   fon rasmidan avtomatik palitra (bx-colors) va uni qo'llash
+#   bx-theme toggle        tungi ↔ kunduzgi (juftlik yoki avtomatik rejim)
+#   bx-theme list          mavjud mavzular
+#   bx-theme current       joriy mavzu
+#   bx-theme render [nom]  faqat fayllarni yaratish (ilovalarga tegmaydi)
+#
+# Mavzular qidiriladigan joylar (birinchi topilgani ishlatiladi):
+#   ~/.config/buxoro/themes/   o'zingizning mavzularingiz
+#   <repo>/themes/             tayyor mavzular
+#   ~/.local/state/buxoro/themes/auto.theme   fon rasmidan yaratilgan
+# shellcheck disable=SC2154,SC2034  # o'zgaruvchilar *.theme fayllaridan yuklanadi
+set -euo pipefail
+
+BX_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/buxoro"
+USER_THEMES="${XDG_CONFIG_HOME:-$HOME/.config}/buxoro/themes"
+THEME_DIRS=("$USER_THEMES" "$BX_DIR/themes" "$STATE_DIR/themes")
+mkdir -p "$STATE_DIR"
+
+COLOR_KEYS=(bg bg_alt surface overlay muted subtext fg accent accent2 gold red green yellow purple orange)
+TEXT_KEYS=(name mode gtk_theme color_scheme icon_theme wallpaper prefer_dark)
+
+die() { echo "bx-theme: $*" >&2; exit 1; }
+current() { cat "$STATE_DIR/theme" 2>/dev/null || echo buxoro; }
+theme_file() {
+    local d
+    for d in "${THEME_DIRS[@]}"; do [[ -r $d/$1.theme ]] && { echo "$d/$1.theme"; return; }; done
+    return 1
+}
+list() {
+    local d f
+    for d in "${THEME_DIRS[@]}"; do
+        for f in "$d"/*.theme; do [[ -r $f ]] && basename "$f" .theme; done
+    done | awk '!seen[$0]++'
+}
+
+load() {
+    local file; file=$(theme_file "$1") || die "'$1' mavzusi topilmadi. Mavjudlari: $(list | tr '\n' ' ')"
+    wallpaper_style="" pair=""
+    # shellcheck source=/dev/null
+    source "$file"
+    prefer_dark=0; [[ ${mode:-dark} == dark ]] && prefer_dark=1
+    for k in "${COLOR_KEYS[@]}"; do
+        [[ ${!k:-} =~ ^[0-9a-fA-F]{6}$ ]] || die "$1.theme: '$k' rangi noto'g'ri yoki yo'q"
+    done
+}
+
+render() {
+    local sedf; sedf="$(mktemp)"
+    for k in "${COLOR_KEYS[@]}"; do
+        local h=${!k}
+        printf 's|{{%s}}|#%s|g\ns|{{%s.hex}}|%s|g\ns|{{%s.rgb}}|%d, %d, %d|g\n' \
+            "$k" "$h" "$k" "$h" "$k" "$((16#${h:0:2}))" "$((16#${h:2:2}))" "$((16#${h:4:2}))" >> "$sedf"
+    done
+    for k in "${TEXT_KEYS[@]}"; do
+        printf 's|{{%s}}|%s|g\n' "$k" "${!k:-}" >> "$sedf"
+    done
+
+    local count=0 t rel out
+    while IFS= read -r -d '' t; do
+        rel=${t#"$BX_DIR/templates/"}
+        out="$BX_DIR/config/${rel%.tmpl}"
+        mkdir -p "$(dirname "$out")"
+        sed -f "$sedf" "$t" > "$out.tmp" && mv "$out.tmp" "$out"
+        grep -q '{{[a-z_.]*}}' "$out" && echo "ogohlantirish: $rel ichida almashtirilmagan joy qoldi" >&2
+        count=$((count + 1))
+    done < <(find "$BX_DIR/templates" -type f -name '*.tmpl' -print0)
+    rm -f "$sedf"
+    echo "$count ta fayl yaratildi ($name)."
+}
+
+wallpaper_path() {
+    [[ $wallpaper == /* ]] && echo "$wallpaper" || echo "$BX_DIR/wallpapers/$wallpaper"
+}
+
+set_wallpaper() {
+    [[ ${BX_NO_WALL:-0} == 1 ]] && return 0          # bx-wall o'zi o'rnatgan bo'lsa
+    local wp; wp=$(wallpaper_path)
+    [[ -r $wp ]] || return 0
+    if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && command -v bx-wall >/dev/null; then
+        BX_NO_COLORS=1 bx-wall set "$wp" >/dev/null 2>&1 || true
+    elif [[ -d $HOME/.config/hypr ]]; then
+        ln -sfn "$wp" "$HOME/.config/hypr/wallpaper"
+    fi
+}
+
+apply_gtk() {
+    command -v gsettings >/dev/null || return 0
+    local s=org.gnome.desktop.interface
+    gsettings set $s gtk-theme "$gtk_theme" 2>/dev/null || true
+    gsettings set $s color-scheme "$color_scheme" 2>/dev/null || true
+    gsettings set $s icon-theme "$icon_theme" 2>/dev/null || true
+    gsettings set $s cursor-theme "Bibata-Modern-Classic" 2>/dev/null || true
+    gsettings set $s cursor-size 24 2>/dev/null || true
+    gsettings set $s font-name "Inter 11" 2>/dev/null || true
+    gsettings set $s monospace-font-name "JetBrainsMono Nerd Font 11" 2>/dev/null || true
+}
+
+reload_apps() {
+    [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || return 0
+    hyprctl reload >/dev/null 2>&1 || true
+    pkill -SIGUSR2 -x waybar 2>/dev/null || true
+    swaync-client -rs >/dev/null 2>&1 || true
+    if pgrep -x swayosd-server >/dev/null; then
+        pkill -x swayosd-server
+        setsid -f swayosd-server >/dev/null 2>&1
+    fi
+    # foot: yangi server yangi ranglar bilan; ochiq oynalar o'zgarishsiz qoladi
+    local sock="${XDG_RUNTIME_DIR:-/run/user/$UID}/foot-${WAYLAND_DISPLAY:-wayland-1}.sock"
+    if pgrep -f 'foot --server' >/dev/null; then
+        rm -f "$sock"
+        setsid -f foot --server >/dev/null 2>&1
+    fi
+    # Ochiq Neovim oynalari
+    local s
+    for s in "${XDG_RUNTIME_DIR:-/tmp}"/nvim.*.0; do
+        [[ -S $s ]] && nvim --server "$s" --remote-send '<Cmd>colorscheme buxoro<CR>' >/dev/null 2>&1 || true
+    done
+}
+
+apply() {
+    local theme="${1:-$(current)}"
+    load "$theme"
+    render
+    echo "$theme" > "$STATE_DIR/theme"
+    [[ $theme == auto ]] || echo off > "$STATE_DIR/auto-colors"
+    set_wallpaper
+    apply_gtk
+    reload_apps
+    if [[ ${BX_QUIET:-0} != 1 ]] && command -v notify-send >/dev/null && [[ -n ${WAYLAND_DISPLAY:-} ]]; then
+        notify-send -a buxoro -i preferences-desktop-theme "Mavzu: $name" "Ranglar yangilandi" || true
+    fi
+}
+
+auto() {
+    local img="${1:-$(readlink -f "$HOME/.config/hypr/wallpaper" 2>/dev/null)}" m="${2:-}"
+    [[ -r $img ]] || die "Fon rasmi topilmadi: $img"
+    if [[ -z $m ]]; then
+        m=dark
+        [[ -r $STATE_DIR/auto-mode ]] && m=$(cat "$STATE_DIR/auto-mode")
+    fi
+    echo "$m" > "$STATE_DIR/auto-mode"
+    bx_colors=("$BX_DIR/bin/bx-colors" "$img" "$m")
+    "${bx_colors[@]}" >/dev/null
+    echo on > "$STATE_DIR/auto-colors"
+    BX_NO_WALL=1 apply auto
+    echo on > "$STATE_DIR/auto-colors"
+}
+
+toggle() {
+    local cur; cur=$(current)
+    load "$cur"
+    if [[ $cur == auto ]]; then
+        local m=light; [[ $mode == light ]] && m=dark
+        auto "" "$m"; return
+    fi
+    if [[ -n ${pair:-} ]] && theme_file "$pair" >/dev/null; then apply "$pair"; return; fi
+    local want=light t; [[ $mode == light ]] && want=dark
+    for t in $(list); do
+        if grep -q "^mode=\"$want\"" "$(theme_file "$t")"; then apply "$t"; return; fi
+    done
+    die "$want rejimidagi mavzu topilmadi"
+}
+
+case "${1:-apply}" in
+    apply)   apply "${2:-}" ;;
+    auto)    auto "${2:-}" "${3:-}" ;;
+    render)  load "${2:-$(current)}"; render ;;
+    toggle)  toggle ;;
+    list)    list ;;
+    current) current ;;
+    path)    theme_file "${2:-$(current)}" ;;
+    -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *)       apply "$1" ;;
+esac

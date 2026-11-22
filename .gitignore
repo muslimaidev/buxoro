@@ -1,0 +1,25 @@
+# bx-theme tomonidan yaratiladigan fayllar (manba: templates/)
+config/hypr/theme/colors.lua
+config/hypr/hyprlock.conf
+config/hypr/wallpaper
+config/foot/colors.ini
+config/fuzzel/fuzzel.ini
+config/rofi/buxoro.rasi
+config/swaync/style.css
+config/swayosd/style.css
+config/waybar/colors.css
+config/waybar/config.jsonc
+config/zsh/colors.zsh
+config/nvim/lua/bx/palette.lua
+config/zathura/colors
+config/btop/themes/
+config/gtk-3.0/settings.ini
+config/gtk-4.0/settings.ini
+
+# Shaxsiy fayllar
+config/hypr/user.lua
+config/zsh/local.zsh
+config/nvim/lazy-lock.json
+config/btop/btop.log
+*.tmp
+__pycache__/

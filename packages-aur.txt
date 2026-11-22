@@ -1,0 +1,2 @@
+# AUR paketlari (paru yoki yay orqali)
+bibata-cursor-theme-bin

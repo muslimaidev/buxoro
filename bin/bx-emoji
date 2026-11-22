@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# bx-emoji — emoji, matematik belgilar va o'zbek harflari (ʻ ʼ). Tanlangani buferga
+# nusxalanadi va (wtype bo'lsa) yoziladi.
+BX_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+sel=$(fuzzel --dmenu --prompt "󰞅  " --width 50 --lines 12 --placeholder "Belgi qidirish…" \
+    < "$BX_DIR/assets/symbols.txt") || exit 0
+ch="${sel%% *}"
+printf '%s' "$ch" | wl-copy
+command -v wtype >/dev/null && wtype -- "$ch"

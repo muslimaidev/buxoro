@@ -1,0 +1,13 @@
+# LaTeX (lualatex, latexmk, kirill shriftlari, TikZ) — ~1.5 GB
+texlive-basic
+texlive-latex
+texlive-latexrecommended
+texlive-latexextra
+texlive-luatex
+texlive-binextra
+texlive-pictures
+texlive-mathscience
+texlive-fontsrecommended
+texlive-fontsextra
+texlive-langcyrillic
+biber

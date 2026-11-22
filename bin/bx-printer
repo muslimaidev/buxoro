@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# bx-printer — printer boshqaruvi (CUPS)
+#
+#   bx-printer                 menyu (fuzzel)
+#   bx-printer status          printerlar va navbat holati
+#   bx-printer add             tarmoq/USB printerini avtomatik topib qo'shish (drayversiz IPP)
+#   bx-printer fix-copies [P]  "faqat 1 nusxa chiqadi" muammosini tuzatish
+#   bx-printer test [P]        sinov sahifasi
+#   bx-printer default [P]     standart printerni tanlash
+#   bx-printer clear           navbatni tozalash
+#   bx-printer print FAYL [N]  N nusxa chop etish (har qanday drayverda ishlaydi)
+#   bx-printer waybar          panel uchun JSON
+# shellcheck disable=SC1112  # matndagi o‘zbekcha ‘ belgisi ataylab
+set -uo pipefail
+
+notify() { command -v notify-send >/dev/null && notify-send -a buxoro -i printer "$@" || echo "$*"; }
+die()    { notify "Printer" "$*"; exit 1; }
+
+# Grafik muhitda pkexec (parol oynasi), terminalda sudo
+as_root() {
+    if [[ -t 0 ]]; then sudo "$@"; else pkexec "$@"; fi
+}
+
+# Tanlov: terminalda fzf, aks holda fuzzel
+pick() { # pick "sarlavha"  (stdin — variantlar)
+    if [[ -t 0 && -t 1 ]] && command -v fzf >/dev/null; then
+        fzf --prompt "$1 › " --height 40% --reverse
+    else
+        fuzzel --dmenu --prompt "󰐪  " --placeholder "$1" --width 60 --lines 10
+    fi
+}
+
+printers() { lpstat -e 2>/dev/null; }
+default_printer() { lpstat -d 2>/dev/null | awk -F': ' '/:/ {print $2}'; }
+
+choose_printer() {
+    local p="${1:-}"
+    [[ -n $p ]] && { echo "$p"; return; }
+    local list; list=$(printers)
+    [[ -n $list ]] || die "Hech qanday printer sozlanmagan. Avval: bx-printer add"
+    if [[ $(wc -l <<<"$list") -eq 1 ]]; then echo "$list"; else pick "Printerni tanlang" <<<"$list"; fi
+}
+
+cmd_status() {
+    echo "── Printerlar ──"; lpstat -p 2>/dev/null || echo "  (yo'q)"
+    echo; echo "── Standart ──";  lpstat -d 2>/dev/null || true
+    echo; echo "── Navbat ──";    lpstat -o 2>/dev/null | sed 's/^/  /' ; [[ -z $(lpstat -o 2>/dev/null) ]] && echo "  bo'sh"
+}
+
+cmd_add() {
+    systemctl is-active --quiet cups.socket cups.service || as_root systemctl enable --now cups.socket
+    notify "Printer" "Tarmoq va USB printerlari qidirilmoqda…"
+    # ipp-usb USB printerlarni tarmoq printeri kabi ko'rsatadi (drayversiz)
+    local found
+    found=$(lpinfo --include-schemes dnssd,ipp,ipps,usb -v 2>/dev/null | awk '{print $2}' | sort -u)
+    [[ -n $found ]] || die "Printer topilmadi. Printer yoqilganini va bir tarmoqda/USB da ekanini tekshiring."
+    local uri; uri=$(pick "Qaysi printerni qo'shamiz?" <<<"$found") || exit 0
+    [[ -n $uri ]] || exit 0
+    local name; name=$(sed -E 's#^[a-z]+://##; s#[/?].*##; s#%20#_#g; s#[^A-Za-z0-9_-]#_#g' <<<"$uri" | cut -c1-40)
+    [[ -n $name ]] || name="Printer"
+    # "everywhere" — drayversiz IPP: zamonaviy printerlarning deyarli hammasi qo'llaydi
+    if as_root lpadmin -p "$name" -E -v "$uri" -m everywhere; then
+        lpoptions -d "$name" >/dev/null
+        lpoptions -p "$name" -o collate=true >/dev/null
+        notify "Printer qo'shildi" "$name (standart qilib belgilandi)"
+    else
+        die "Drayversiz rejim ishlamadi. Printer eski bo'lsa, system-config-printer orqali drayver tanlang."
+    fi
+}
+
+cmd_fix_copies() {
+    local p; p=$(choose_printer "${1:-}") || exit 0
+    local ppd="/etc/cups/ppd/$p.ppd"
+    lpoptions -p "$p" -o collate=true >/dev/null
+    if as_root test -f "$ppd"; then
+        # Drayver "nusxalarni o'zim chiqaraman" deydi-yu, chiqarmaydi → CUPS o'zi nusxalaydi
+        as_root sh -c "
+            if grep -q '^\*cupsManualCopies:' '$ppd'; then
+                sed -i 's/^\*cupsManualCopies:.*/*cupsManualCopies: True/' '$ppd'
+            else
+                sed -i '0,/^\*PCFileName/s//*cupsManualCopies: True\n&/' '$ppd'
+                grep -q '^\*cupsManualCopies:' '$ppd' || printf '*cupsManualCopies: True\n' >> '$ppd'
+            fi
+            systemctl restart cups.service"
+        notify "Printer: $p" "Nusxalarni endi CUPS o'zi yaratadi. Sinab ko'ring: bx-printer print fayl.pdf 3"
+    else
+        notify "Printer: $p" "PPD topilmadi; nusxalarni alohida vazifa qilib yuborish tavsiya etiladi: bx-printer print fayl.pdf 3"
+    fi
+}
+
+cmd_test() {
+    local p; p=$(choose_printer "${1:-}") || exit 0
+    lp -d "$p" /usr/share/cups/data/testprint >/dev/null && notify "Printer: $p" "Sinov sahifasi yuborildi"
+}
+
+cmd_default() {
+    local p; p=$(choose_printer "${1:-}") || exit 0
+    lpoptions -d "$p" >/dev/null && notify "Standart printer" "$p"
+}
+
+cmd_clear() {
+    cancel -a 2>/dev/null; notify "Printer" "Navbat tozalandi"
+}
+
+# Ishonchli ko'p nusxa: avval CUPS nusxalari, BX_COPIES=loop bo'lsa — har biri alohida vazifa
+cmd_print() {
+    local file="${1:-}" n="${2:-1}" p
+    [[ -r $file ]] || die "Fayl topilmadi: $file"
+    [[ $n =~ ^[0-9]+$ && $n -ge 1 ]] || die "Nusxalar soni noto'g'ri: $n"
+    p=$(choose_printer "${3:-}") || exit 0
+    if [[ ${BX_COPIES:-native} == loop ]]; then
+        for ((i = 1; i <= n; i++)); do lp -d "$p" -t "$(basename "$file") ($i/$n)" "$file" >/dev/null; done
+    else
+        lp -d "$p" -n "$n" -o collate=true "$file" >/dev/null
+    fi
+    notify "Chop etilmoqda" "$(basename "$file") — $n nusxa ($p)"
+}
+
+cmd_waybar() {
+    [[ -n $(printers) ]] || { echo '{"text":""}'; return; }
+    local jobs stopped
+    jobs=$(lpstat -o 2>/dev/null | wc -l)
+    stopped=$(lpstat -p 2>/dev/null | grep -ciE 'disabled|o.chirilgan|stopped')
+    if (( stopped > 0 )); then
+        printf '{"text":"󰐪 !","tooltip":"Printer to‘xtatilgan yoki xatolik bor\\nBosing — menyu","class":"error"}\n'
+    elif (( jobs > 0 )); then
+        printf '{"text":"󰐪 %d","tooltip":"Navbatda %d ta vazifa","class":"busy"}\n' "$jobs" "$jobs"
+    else
+        echo '{"text":""}'
+    fi
+}
+
+cmd_menu() {
+    local choice
+    choice=$(printf '%s\n' \
+        "󰐪  Holat va navbat" \
+        "  Printer qo'shish (avtomatik)" \
+        "󰆏  Nusxalar muammosini tuzatish" \
+        "  Sinov sahifasi" \
+        "  Standart printerni tanlash" \
+        "󰆴  Navbatni tozalash" \
+        "  Sozlamalar oynasi" \
+        "󰖟  CUPS veb-interfeysi" | pick "Printer") || exit 0
+    case "$choice" in
+        *Holat*)       notify "Printer holati" "$(cmd_status | head -20)" ;;
+        *qo\'shish*)   cmd_add ;;
+        *Nusxalar*)    cmd_fix_copies ;;
+        *Sinov*)       cmd_test ;;
+        *Standart*)    cmd_default ;;
+        *tozalash*)    cmd_clear ;;
+        *Sozlamalar*)  setsid -f system-config-printer >/dev/null 2>&1 ;;
+        *veb*)         xdg-open http://localhost:631 >/dev/null 2>&1 & ;;
+    esac
+}
+
+case "${1:-menu}" in
+    menu)        cmd_menu ;;
+    status)      cmd_status ;;
+    add)         cmd_add ;;
+    fix-copies)  cmd_fix_copies "${2:-}" ;;
+    test)        cmd_test "${2:-}" ;;
+    default)     cmd_default "${2:-}" ;;
+    clear)       cmd_clear ;;
+    print)       shift; cmd_print "$@" ;;
+    waybar)      cmd_waybar ;;
+    -h|--help)   sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *)           echo "Noma'lum buyruq: $1 (bx-printer --help)" >&2; exit 1 ;;
+esac

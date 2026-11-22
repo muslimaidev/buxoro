@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# bx-wall — fon rasmlari (awww: silliq o'tish effektlari, GIF animatsiyalar)
+#
+#   bx-wall pick                galereyadan tanlash (SUPER + W)
+#   bx-wall next | prev | random
+#   bx-wall set <fayl>
+#   bx-wall restore             joriy rasmni effektsiz qayta o'rnatish (kirishda)
+#   bx-wall auto on|off|toggle  rasm almashganda ranglar ham rasmdan olinsinmi
+#   bx-wall transition [tur]    grow (kursordan) | wave | wipe | fade | outer | random | none
+#   bx-wall slideshow start [daqiqa] | stop | status
+#
+# Rasmlar: <repo>/wallpapers va ~/Pictures/Wallpapers (png, jpg, webp, gif)
+set -uo pipefail
+
+BX_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/buxoro"
+LINK="$HOME/.config/hypr/wallpaper"
+USER_WALLS="${BX_WALLPAPERS:-$HOME/Pictures/Wallpapers}"
+mkdir -p "$STATE"
+
+walls() {
+    find "$BX_DIR/wallpapers" "$USER_WALLS" -maxdepth 2 -type f \
+        \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' \) 2>/dev/null | sort
+}
+
+# awww (yangi nomi) yoki swww (eski nomi)
+W=""; command -v awww >/dev/null && W=awww; [[ -z $W ]] && command -v swww >/dev/null && W=swww
+
+ensure_daemon() {
+    [[ -n $W ]] || return 1
+    "$W" query >/dev/null 2>&1 && return 0
+    setsid -f "$W-daemon" >/dev/null 2>&1
+    for _ in 1 2 3 4 5 6 7 8 9 10; do sleep 0.1; "$W" query >/dev/null 2>&1 && return 0; done
+    return 1
+}
+
+# Doira sichqoncha turgan joydan o'sadi (awww: koordinatalar pastki-chapdan, ulushlarda)
+cursor_pos() {
+    local cp mon
+    cp=$(hyprctl cursorpos 2>/dev/null) || { echo center; return; }
+    mon=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused) | "\(.x) \(.y) \(.width) \(.height) \(.scale)"')
+    [[ -n $mon ]] || { echo center; return; }
+    awk -v cp="$cp" -v m="$mon" 'BEGIN {
+        split(cp, c, ", "); split(m, a, " ");
+        w = a[3] / a[5]; h = a[4] / a[5];
+        x = (c[1] - a[1]) / w; y = 1 - (c[2] - a[2]) / h;
+        if (x < 0) x = 0; if (x > 1) x = 1; if (y < 0) y = 0; if (y > 1) y = 1;
+        printf "%.3f,%.3f", x, y }'
+}
+
+transition_args() {
+    local t; t=$(cat "$STATE/transition" 2>/dev/null || echo grow)
+    [[ ${1:-} == none ]] && t=none
+    local common=(--transition-fps 144 --transition-duration 1.2 --transition-bezier ".54,0,.34,.99")
+    case "$t" in
+        grow)   echo --transition-type grow --transition-pos "$(cursor_pos)" "${common[@]}" ;;
+        outer)  echo --transition-type outer --transition-pos "$(cursor_pos)" "${common[@]}" ;;
+        wave)   echo --transition-type wave --transition-angle 30 --transition-wave 40,30 "${common[@]}" ;;
+        wipe)   echo --transition-type wipe --transition-angle 30 "${common[@]}" ;;
+        fade)   echo --transition-type fade "${common[@]}" ;;
+        random) echo --transition-type random "${common[@]}" ;;
+        none)   echo --transition-type none ;;
+        *)      echo --transition-type grow "${common[@]}" ;;
+    esac
+}
+
+set_wall() { # set_wall <fayl> [none]
+    local f; f=$(readlink -f "$1")
+    [[ -r $f ]] || { echo "Fayl topilmadi: $1" >&2; return 1; }
+    mkdir -p "$(dirname "$LINK")"
+    ln -sfn "$f" "$LINK"
+    if ensure_daemon; then
+        # shellcheck disable=SC2046  # argumentlar ataylab bo'linadi
+        "$W" img "$f" --resize crop $(transition_args "${2:-}") >/dev/null 2>&1 &
+    elif pgrep -x hyprpaper >/dev/null; then
+        hyprctl hyprpaper wallpaper ",$f,cover" >/dev/null 2>&1
+    fi
+    # Avtomatik ranglar yoqilgan bo'lsa — palitra rasmdan
+    if [[ ${BX_NO_COLORS:-0} != 1 && $(cat "$STATE/auto-colors" 2>/dev/null) == on ]]; then
+        BX_QUIET=1 bx-theme auto "$f" >/dev/null 2>&1 &
+    fi
+    wait
+}
+
+current() { readlink -f "$LINK" 2>/dev/null; }
+
+step_wall() { # step_wall +1|-1|random
+    mapfile -t list < <(walls)
+    (( ${#list[@]} )) || { echo "Fon rasmlari topilmadi" >&2; exit 1; }
+    local n=${#list[@]} idx=0 cur i
+    cur=$(current)
+    for i in "${!list[@]}"; do [[ ${list[$i]} == "$cur" ]] && idx=$i; done
+    case "$1" in
+        random) i=$(( RANDOM % n )); (( n > 1 && i == idx )) && i=$(( (i + 1) % n )) ;;
+        *)      i=$(( (idx + $1 + n) % n )) ;;
+    esac
+    set_wall "${list[$i]}"
+}
+
+slideshow() {
+    local pidf="$STATE/slideshow.pid"
+    case "${1:-status}" in
+        start)
+            slideshow stop >/dev/null
+            local min="${2:-30}"
+            setsid -f bash -c "while sleep $((min * 60)); do '$0' random; done" >/dev/null 2>&1
+            sleep 0.2; pgrep -n -f "while sleep $((min * 60)); do" > "$pidf"
+            notify-send -a buxoro -i preferences-desktop-wallpaper "Slayd-shou" "Har $min daqiqada yangi fon" 2>/dev/null
+            ;;
+        stop)   [[ -f $pidf ]] && kill "$(cat "$pidf")" 2>/dev/null; rm -f "$pidf"; echo "Slayd-shou to'xtatildi" ;;
+        status) [[ -f $pidf ]] && kill -0 "$(cat "$pidf")" 2>/dev/null && echo "ishlayapti" || echo "o'chiq" ;;
+    esac
+}
+
+case "${1:-next}" in
+    pick)       exec bx-picker wallpaper ;;
+    next)       step_wall +1 ;;
+    prev)       step_wall -1 ;;
+    random)     step_wall random ;;
+    set)        set_wall "${2:-}" ;;
+    restore)    c=$(current); [[ -n $c ]] && BX_NO_COLORS=1 set_wall "$c" none ;;
+    current)    current ;;
+    list)       walls ;;
+    auto)
+        case "${2:-toggle}" in
+            on)     echo on > "$STATE/auto-colors"; bx-theme auto ;;
+            off)    echo off > "$STATE/auto-colors" ;;
+            toggle) if [[ $(cat "$STATE/auto-colors" 2>/dev/null) == on ]]; then "$0" auto off; else "$0" auto on; fi ;;
+        esac ;;
+    transition)
+        if [[ -n ${2:-} ]]; then echo "$2" > "$STATE/transition"; fi
+        cat "$STATE/transition" 2>/dev/null || echo grow ;;
+    slideshow)  slideshow "${2:-status}" "${3:-}" ;;
+    -h|--help)  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *)          echo "Noma'lum buyruq: $1 (bx-wall --help)" >&2; exit 1 ;;
+esac

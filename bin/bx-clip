@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# bx-clip — bufer tarixi (cliphist + fuzzel). "bx-clip wipe" — tarixni tozalash.
+if [[ ${1:-} == wipe ]]; then
+    cliphist wipe && notify-send -a buxoro "Bufer tarixi tozalandi"
+    exit 0
+fi
+sel=$(cliphist list | fuzzel --dmenu --prompt "󰅌  " --width 70 --lines 12 --placeholder "Bufer tarixidan qidirish…") || exit 0
+printf '%s' "$sel" | cliphist decode | wl-copy

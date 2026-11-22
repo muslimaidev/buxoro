@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# bx-shot — skrinshot: region | screen | edit
+# Fayl ~/Pictures/Screenshots ga saqlanadi va buferga nusxalanadi.
+set -uo pipefail
+dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
+mkdir -p "$dir"
+file="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
+
+done_msg() {
+    wl-copy --type image/png < "$file"
+    notify-send -a buxoro -i "$file" "Skrinshot olindi" "${file/#$HOME/\~}"
+}
+
+case "${1:-region}" in
+    region)
+        geom=$(slurp -d -b '00000066' -c '3cc4b4ff' -w 2) || exit 0
+        grim -g "$geom" "$file" && done_msg ;;
+    screen)
+        out=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
+        grim ${out:+-o "$out"} "$file" && done_msg ;;
+    edit)
+        geom=$(slurp -d -b '00000066' -c '3cc4b4ff' -w 2) || exit 0
+        grim -g "$geom" - | satty --filename - --output-filename "$file" \
+            --copy-command wl-copy --early-exit ;;
+    *)  echo "Foydalanish: bx-shot region|screen|edit" >&2; exit 1 ;;
+esac

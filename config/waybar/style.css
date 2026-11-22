@@ -1,0 +1,113 @@
+/* Buxoro — Waybar. Ranglar colors.css dan (bx-theme yaratadi). */
+@import "colors.css";
+
+* {
+  font-family: "Inter", "JetBrainsMono Nerd Font", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+}
+
+window#waybar {
+  background: transparent;
+  color: @fg;
+}
+
+tooltip {
+  background: alpha(@bg, 0.95);
+  border: 1px solid alpha(@accent, 0.6);
+  border-radius: 12px;
+}
+tooltip label { color: @fg; padding: 4px; }
+
+/* Har bir guruh — alohida "orolcha" */
+.modules-left,
+.modules-center,
+.modules-right {
+  background: alpha(@bg, 0.82);
+  border: 1px solid alpha(@overlay, 0.9);
+  border-radius: 14px;
+  padding: 0 6px;
+}
+
+#custom-logo {
+  color: @accent;
+  font-size: 18px;
+  padding: 0 12px 0 8px;
+}
+
+#workspaces { padding: 0 2px; }
+#workspaces button {
+  color: @muted;
+  padding: 0 7px;
+  margin: 5px 1px;
+  border-radius: 9px;
+  background: transparent;
+  transition: all 150ms ease;
+}
+#workspaces button.active {
+  color: @bg;
+  background: linear-gradient(135deg, @accent, @accent2);
+  padding: 0 14px;
+}
+#workspaces button.urgent { color: @bg; background: @red; }
+#workspaces button:hover { color: @fg; background: alpha(@overlay, 0.8); }
+
+#window { color: @subtext; padding: 0 10px; font-weight: 500; }
+window#waybar.empty #window { padding: 0; }
+
+#clock {
+  color: @fg;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 14px;
+}
+
+#tray, #cpu, #memory, #temperature, #disk, #language, #pulseaudio,
+#backlight, #network, #bluetooth, #power-profiles-daemon, #battery,
+#custom-notification, #custom-printer, #custom-updates, #mpris, #custom-power {
+  padding: 0 9px;
+  color: @subtext;
+}
+
+#cpu         { color: @accent2; }
+#memory      { color: @purple; }
+#temperature { color: @orange; }
+#temperature.critical { color: @red; }
+#disk        { color: @gold; }
+#language    { color: @gold; }
+#pulseaudio  { color: @accent; }
+#pulseaudio.muted { color: @muted; }
+#backlight   { color: @yellow; }
+#network.disconnected { color: @red; }
+#bluetooth.connected  { color: @accent2; }
+#power-profiles-daemon.performance { color: @red; }
+#power-profiles-daemon.power-saver { color: @green; }
+
+#battery { color: @green; }
+#battery.charging, #battery.plugged { color: @accent; }
+#battery.warning:not(.charging) { color: @orange; }
+#battery.critical:not(.charging) {
+  color: @bg;
+  background: @red;
+  border-radius: 9px;
+  margin: 5px 0;
+}
+
+#custom-notification { color: @gold; font-size: 15px; }
+#custom-notification.dnd-notification,
+#custom-notification.dnd-none { color: @muted; }
+#custom-notification.notification { color: @accent; }
+#custom-printer { color: @accent2; }
+#custom-printer.error { color: @red; }
+#custom-updates { color: @green; }
+#mpris { color: @subtext; font-weight: 500; }
+#mpris.paused { color: @muted; }
+
+#custom-power {
+  color: @red;
+  font-size: 15px;
+  padding: 0 12px 0 8px;
+}

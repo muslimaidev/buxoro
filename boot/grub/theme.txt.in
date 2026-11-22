@@ -1,0 +1,59 @@
+# Buxoro — GRUB mavzusi. @...@ belgilarini bx-boot shriftlar yaratilgandan keyin almashtiradi.
+title-text: ""
+desktop-image: "background.png"
+desktop-color: "#13111a"
+terminal-font: "@FONT_MONO@"
+terminal-box: ""
+
++ label {
+    top = 16%
+    left = 0
+    width = 100%
+    height = 60
+    align = "center"
+    text = "B U X O R O"
+    font = "@FONT_TITLE@"
+    color = "#e8b84e"
+}
+
++ boot_menu {
+    left = 31%
+    top = 30%
+    width = 38%
+    height = 42%
+    item_font = "@FONT_REG@"
+    selected_item_font = "@FONT_REG@"
+    item_color = "#b9b0c5"
+    selected_item_color = "#13111a"
+    item_height = 46
+    item_padding = 18
+    item_spacing = 10
+    icon_width = 0
+    icon_height = 0
+    item_icon_space = 0
+    selected_item_pixmap_style = "select_*.png"
+    scrollbar = false
+}
+
++ progress_bar {
+    id = "__timeout__"
+    left = 31%
+    top = 78%
+    width = 38%
+    height = 4
+    fg_color = "#3cc4b4"
+    bg_color = "#372f45"
+    border_color = "#372f45"
+    show_text = false
+}
+
++ label {
+    id = "__timeout__"
+    left = 0
+    top = 81%
+    width = 100%
+    align = "center"
+    color = "#7c7289"
+    font = "@FONT_SMALL@"
+    text = "%d soniyadan so‘ng yuklanadi  ·  ↑↓ tanlash  ·  Enter — yuklash"
+}

@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# bx-picker — Buxoro galereyasi (rofi)
+#   bx-picker theme       mavzular: tayyor palitralar va "fon rasmidan avtomatik"  (SUPER + SHIFT + T)
+#   bx-picker wallpaper   fon rasmlari to'ri  (SUPER + W)
+#
+# Galereyada:  Enter/sichqoncha — tanlash
+#   Mavzu:     Alt+D  avtomatik mavzu uchun tungi/kunduzgi
+#   Fon:       Alt+A  ranglarni rasmdan olish (yoq/o'chir)   Alt+T  o'tish effekti
+#              Alt+R  tasodifiy                              Alt+S  slayd-shou
+# shellcheck disable=SC2154  # ranglar *.theme fayllaridan yuklanadi
+set -uo pipefail
+
+BX_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/buxoro"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/buxoro"
+RASI="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/buxoro.rasi"
+mkdir -p "$CACHE/thumbs" "$CACHE/cards" "$STATE"
+
+MAGICK=$(command -v magick || command -v convert)
+
+thumb() { # thumb <rasm> → kichik nusxa yo'li (kesh)
+    local f=$1 key out
+    key=$(printf '%s:%s' "$f" "$(stat -c %Y "$f" 2>/dev/null)" | md5sum | cut -c1-16)
+    out="$CACHE/thumbs/$key.jpg"
+    [[ -s $out ]] || "$MAGICK" "${f}[0]" -resize 480x270^ -gravity center -extent 480x270 +repage -quality 86 "$out" 2>/dev/null
+    echo "$out"
+}
+
+# Mavzu kartochkasi: fon rasmi + palitra chizig'i
+card() { # card <mavzu fayli> <kesh kaliti>
+    local file=$1 key=$2 out="$CACHE/cards/$2.png"
+    [[ -s $out ]] && { echo "$out"; return; }
+    (
+        # shellcheck source=/dev/null
+        source "$file"
+        local wp="$wallpaper"; [[ $wp == /* ]] || wp="$BX_DIR/wallpapers/$wp"
+        local draws=() i=0 c
+        for c in "$accent" "$accent2" "$gold" "$red" "$green" "$purple" "$orange" "$fg"; do
+            draws+=(-fill "#$c" -draw "roundrectangle $((18 + i * 56)),16 $((60 + i * 56)),48 10,10")
+            i=$((i + 1))
+        done
+        if [[ -r $wp ]]; then
+            "$MAGICK" \( "${wp}[0]" -resize 480x270^ -gravity center -extent 480x270 \) \
+                \( -size 480x64 xc:"#$bg_alt" "${draws[@]}" \) -append +repage -depth 8 -quality 92 "$out" 2>/dev/null
+        else
+            "$MAGICK" -size 480x334 xc:"#$bg" "${draws[@]}" "$out" 2>/dev/null
+        fi
+    )
+    echo "$out"
+}
+
+rofi_menu() { # rofi_menu <prompt> <xabar> <ustunlar> <qatorlar> <ikonka o'lchami> [qo'shimcha rofi argumentlari…]
+    local p=$1 m=$2 cols=$3 lines=$4 size=$5; shift 5
+    if command -v rofi >/dev/null; then
+        rofi -dmenu -i -show-icons -format i -p "$p" -mesg "$m" -theme "$RASI" \
+            -theme-str "listview { columns: $cols; lines: $lines; } element-icon { size: ${size}px; }" "$@"
+    else
+        fuzzel --dmenu --index --prompt "$p  " --width 60 --lines 12
+    fi
+}
+
+pick_theme() {
+    while true; do
+        local names=() labels=() icons=() t file mode_
+        local cur; cur=$(bx-theme current)
+        local amode; amode=$(cat "$STATE/auto-mode" 2>/dev/null || echo dark)
+
+        # 1) Avtomatik — joriy fon rasmidan
+        local wp; wp=$(readlink -f "$HOME/.config/hypr/wallpaper" 2>/dev/null)
+        if [[ -r $wp ]]; then
+            local tmpf="$CACHE/auto-preview-$amode.theme"
+            local akey; akey="auto-$(printf '%s:%s:%s' "$wp" "$(stat -c %Y "$wp")" "$amode" | md5sum | cut -c1-12)"
+            [[ -s $CACHE/cards/$akey.png ]] || "$BX_DIR/bin/bx-colors" "$wp" "$amode" - > "$tmpf" 2>/dev/null
+            names+=(auto); labels+=("󰸌  Fon rasmidan ($( [[ $amode == dark ]] && echo tungi || echo kunduzgi ))")
+            icons+=("$(card "$tmpf" "$akey")")
+        fi
+        # 2) Tayyor va shaxsiy mavzular
+        for t in $(bx-theme list); do
+            [[ $t == auto ]] && continue
+            file=$(bx-theme path "$t")
+            mode_=$(sed -n 's/^mode="\(.*\)"/\1/p' "$file")
+            names+=("$t")
+            labels+=("$(sed -n 's/^name="\(.*\)"/\1/p' "$file")  $( [[ $mode_ == light ]] && echo '󰖨' || echo '󰖔')")
+            icons+=("$(card "$file" "$t-$(stat -c %Y "$file")")")
+        done
+
+        local active=""
+        for i in "${!names[@]}"; do [[ ${names[$i]} == "$cur" ]] && active="-a $i"; done
+        local sel rc
+        # shellcheck disable=SC2086
+        sel=$(for i in "${!names[@]}"; do printf '%s\0icon\x1f%s\n' "${labels[$i]}" "${icons[$i]}"; done |
+            rofi_menu "Mavzu" "<b>Enter</b> qo'llash   ·   <b>Alt+D</b> avtomatik: tungi/kunduzgi   ·   joriy: <b>$cur</b>" 4 2 250 \
+                $active -kb-custom-1 "Alt+d")
+        rc=$?
+        case $rc in
+            0)  [[ -n $sel ]] || return
+                if [[ ${names[$sel]} == auto ]]; then bx-theme auto "$wp" "$amode"; else bx-theme apply "${names[$sel]}"; fi
+                return ;;
+            10) [[ $amode == dark ]] && echo light > "$STATE/auto-mode" || echo dark > "$STATE/auto-mode" ;;
+            *)  return ;;
+        esac
+    done
+}
+
+pick_wallpaper() {
+    while true; do
+        local list=() icons=() labels=() f
+        mapfile -t list < <(bx-wall list)
+        (( ${#list[@]} )) || { notify-send -a buxoro "Fon rasmlari topilmadi" "$HOME/Pictures/Wallpapers papkasiga rasm qo'shing"; return 1; }
+        for f in "${list[@]}"; do
+            icons+=("$(thumb "$f")")
+            labels+=("$(basename "${f%.*}" | tr '_-' '  ')")
+        done
+        local cur active="" i
+        cur=$(bx-wall current)
+        for i in "${!list[@]}"; do [[ ${list[$i]} == "$cur" ]] && active="-a $i"; done
+        local auto tr ss
+        auto=$(cat "$STATE/auto-colors" 2>/dev/null || echo off)
+        tr=$(bx-wall transition)
+        ss=$(bx-wall slideshow status)
+        local mesg
+        mesg="<b>Alt+A</b> ranglar rasmdan: <b>$( [[ $auto == on ]] && echo yoqilgan || echo "o'chiq")</b>   ·   <b>Alt+T</b> effekt: <b>$tr</b>   ·   <b>Alt+R</b> tasodifiy   ·   <b>Alt+S</b> slayd-shou: <b>$ss</b>"
+        local sel rc
+        # shellcheck disable=SC2086
+        sel=$(for i in "${!list[@]}"; do printf '%s\0icon\x1f%s\n' "${labels[$i]}" "${icons[$i]}"; done |
+            rofi_menu "Fon" "$mesg" 4 3 230 $active \
+                -kb-custom-1 "Alt+a" -kb-custom-2 "Alt+t" -kb-custom-3 "Alt+r" -kb-custom-4 "Alt+s")
+        rc=$?
+        case $rc in
+            0)  [[ -n $sel ]] && bx-wall set "${list[$sel]}"; return ;;
+            10) if [[ $auto == on ]]; then bx-wall auto off; else bx-wall auto on; fi ;;
+            11) local order=(grow wave wipe outer fade random none) n=0
+                for i in "${!order[@]}"; do [[ ${order[$i]} == "$tr" ]] && n=$(( (i + 1) % ${#order[@]} )); done
+                bx-wall transition "${order[$n]}" >/dev/null ;;
+            12) bx-wall random; return ;;
+            13) if [[ $ss == ishlayapti ]]; then bx-wall slideshow stop >/dev/null; else bx-wall slideshow start 30; fi ;;
+            *)  return ;;
+        esac
+    done
+}
+
+case "${1:-theme}" in
+    theme)     pick_theme ;;
+    wallpaper) pick_wallpaper ;;
+    *) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

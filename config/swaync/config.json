@@ -1,0 +1,167 @@
+{
+  "$schema": "/etc/xdg/swaync/configSchema.json",
+  "ignore-gtk-theme": true,
+  "cssPriority": "user",
+  "positionX": "right",
+  "positionY": "top",
+  "layer": "overlay",
+  "control-center-layer": "top",
+  "layer-shell": true,
+  "layer-shell-cover-screen": true,
+  "control-center-positionX": "right",
+  "control-center-positionY": "top",
+  "control-center-margin-top": 8,
+  "control-center-margin-bottom": 8,
+  "control-center-margin-right": 8,
+  "control-center-margin-left": 8,
+  "control-center-width": 440,
+  "control-center-exclusive-zone": true,
+  "fit-to-screen": true,
+  "notification-window-width": 400,
+  "notification-icon-size": 52,
+  "notification-body-image-height": 120,
+  "notification-body-image-width": 220,
+  "notification-2fa-action": true,
+  "notification-inline-replies": true,
+  "notification-grouping": true,
+  "relative-timestamps": true,
+  "timeout": 6,
+  "timeout-low": 4,
+  "timeout-critical": 0,
+  "transition-time": 180,
+  "keyboard-shortcuts": true,
+  "image-visibility": "when-available",
+  "hide-on-clear": false,
+  "hide-on-action": true,
+  "script-fail-notify": true,
+  "text-empty": "Yangi bildirishnoma yo‘q",
+
+  "notification-visibility": {
+    "spotify-quiet": { "state": "transient", "app-name": "Spotify" }
+  },
+
+  "widgets": [
+    "menubar",
+    "calendar",
+    "buttons-grid",
+    "volume",
+    "backlight",
+    "mpris",
+    "title",
+    "notifications"
+  ],
+
+  "widget-config": {
+    "menubar": {
+      "buttons#left": {
+        "position": "left",
+        "actions": [
+          { "label": "󰸉  Fon", "command": "swaync-client -cp && bx-picker wallpaper" },
+          { "label": "󰏘  Mavzu", "command": "swaync-client -cp && bx-picker theme" }
+        ]
+      },
+      "menu#power": {
+        "label": "⏻",
+        "position": "right",
+        "animation-type": "slide_down",
+        "animation-duration": 200,
+        "actions": [
+          { "label": "   Qulflash",      "command": "swaync-client -cp && loginctl lock-session" },
+          { "label": "󰍃   Chiqish",       "command": "swaync-client -cp && (command -v hyprshutdown >/dev/null && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()')" },
+          { "label": "󰤄   Uyqu",          "command": "swaync-client -cp && systemctl suspend" },
+          { "label": "   Qayta yuklash", "command": "systemctl reboot" },
+          { "label": "⏻   O‘chirish",     "command": "systemctl poweroff" }
+        ]
+      }
+    },
+
+    "calendar": {
+      "show-day-label": true,
+      "show-date-label": true,
+      "show-heading": true,
+      "show-day-names": true,
+      "show-week-numbers": false
+    },
+
+    "buttons-grid": {
+      "buttons-per-row": 4,
+      "actions": [
+        {
+          "label": "󰤨",
+          "type": "toggle",
+          "active": true,
+          "command": "sh -c '[ \"$SWAYNC_TOGGLE_STATE\" = true ] && nmcli radio wifi on || nmcli radio wifi off'",
+          "update-command": "sh -c '[ \"$(nmcli radio wifi)\" = enabled ] && echo true || echo false'"
+        },
+        {
+          "label": "󰂯",
+          "type": "toggle",
+          "command": "sh -c '[ \"$SWAYNC_TOGGLE_STATE\" = true ] && bluetoothctl power on || bluetoothctl power off'",
+          "update-command": "sh -c 'bluetoothctl show 2>/dev/null | grep -q \"Powered: yes\" && echo true || echo false'"
+        },
+        {
+          "label": "󰂛",
+          "type": "toggle",
+          "command": "sh -c 'swaync-client -d -sw'",
+          "update-command": "sh -c 'swaync-client -D -sw'"
+        },
+        {
+          "label": "",
+          "type": "toggle",
+          "command": "bx-nightlight",
+          "update-command": "sh -c 'pgrep -x hyprsunset >/dev/null && echo true || echo false'"
+        },
+        {
+          "label": "󰹑",
+          "command": "sh -c 'swaync-client -cp; sleep 0.3; bx-shot region'"
+        },
+        {
+          "label": "󰔎",
+          "command": "sh -c 'swaync-client -cp; bx-picker theme'"
+        },
+        {
+          "label": "󰐪",
+          "command": "sh -c 'swaync-client -cp; bx-printer menu'"
+        },
+        {
+          "label": "󰊗",
+          "type": "toggle",
+          "command": "bx-gamemode",
+          "update-command": "sh -c '[ -e \"${XDG_RUNTIME_DIR:-/tmp}/bx-gamemode\" ] && echo true || echo false'"
+        }
+      ]
+    },
+
+    "volume": {
+      "label": "󰕾",
+      "show-per-app": true,
+      "show-per-app-icon": true,
+      "show-per-app-label": false,
+      "empty-list-label": "Hech qanday dastur ovoz chiqarmayapti",
+      "expand-button-label": "",
+      "collapse-button-label": ""
+    },
+
+    "backlight": {
+      "label": "󰃟",
+      "device": "intel_backlight",
+      "min": 5
+    },
+
+    "mpris": {
+      "show-album-art": "always",
+      "autohide": true,
+      "loop-carousel": true
+    },
+
+    "title": {
+      "text": "Bildirishnomalar",
+      "clear-all-button": true,
+      "button-text": "Tozalash"
+    },
+
+    "notifications": {
+      "vexpand": true
+    }
+  }
+}

@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Buxoro
+Description=Buxoro — Poyi Kalon siluyeti, gerb va oltin nuqtalar
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/buxoro
+ScriptFile=/usr/share/plymouth/themes/buxoro/buxoro.script

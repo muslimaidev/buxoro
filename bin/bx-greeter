@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# bx-greeter — Buxoro login ekrani: greetd + ReGreet (GTK4) + cage
+#   bx-greeter install   o'rnatish va yoqish (qayta yuklashdan keyin ishlaydi)
+#   bx-greeter preview   joriy sessiyada ko'rib chiqish (demo rejim)
+#   bx-greeter remove    eski login manager'ga qaytish uchun greetd ni o'chirish
+set -euo pipefail
+BX_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+ok()   { printf '   \e[1;32m✓\e[0m %s\n' "$*"; }
+warn() { printf '   \e[1;33m!\e[0m %s\n' "$*"; }
+
+install() {
+    sudo pacman -S --needed --noconfirm greetd greetd-regreet cage >/dev/null && ok "greetd, ReGreet, cage o'rnatildi"
+
+    sudo mkdir -p /usr/share/backgrounds/buxoro /etc/greetd
+    sudo cp "$BX_DIR/wallpapers/buxoro.png" /usr/share/backgrounds/buxoro/buxoro.png
+    sudo chmod 644 /usr/share/backgrounds/buxoro/buxoro.png
+
+    local f
+    for f in config.toml regreet.toml regreet.css; do
+        [[ -f /etc/greetd/$f ]] && sudo cp -a "/etc/greetd/$f" "/etc/greetd/$f.bx-backup-$STAMP"
+        sudo cp "$BX_DIR/boot/greetd/$f" "/etc/greetd/$f"
+    done
+    ok "/etc/greetd sozlandi"
+
+    # Faqat bitta login manager ishlashi mumkin
+    local dm
+    for dm in sddm gdm lightdm ly lxdm lemurs; do
+        if systemctl is-enabled "$dm.service" >/dev/null 2>&1; then
+            sudo systemctl disable "$dm.service" >/dev/null 2>&1 && warn "$dm o'chirildi (qaytarish: sudo systemctl enable $dm)"
+        fi
+    done
+    sudo systemctl enable greetd.service >/dev/null 2>&1 && ok "greetd yoqildi — keyingi yuklanishda Buxoro login ekrani chiqadi"
+}
+
+preview() {
+    command -v regreet >/dev/null || { echo "Avval: bx-greeter install"; exit 1; }
+    regreet --demo --logs "${XDG_RUNTIME_DIR:-/tmp}/regreet.log" --config "$BX_DIR/boot/greetd/regreet.toml" --style "$BX_DIR/boot/greetd/regreet.css"
+}
+
+remove() {
+    sudo systemctl disable greetd.service >/dev/null 2>&1 && ok "greetd o'chirildi"
+    warn "Oldingi login manager'ni yoqing, masalan: sudo systemctl enable sddm"
+}
+
+case "${1:-install}" in
+    install) install ;;
+    preview) preview ;;
+    remove)  remove ;;
+    *) sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

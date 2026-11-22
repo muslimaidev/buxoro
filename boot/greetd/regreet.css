@@ -1,0 +1,59 @@
+/* Buxoro — ReGreet (GTK4) uslubi */
+* { font-family: "Inter", sans-serif; }
+
+window { background-color: #13111a; }
+
+/* Markaziy karta */
+frame, .background > box > frame, box.login-box {
+  background: rgba(26, 23, 35, 0.86);
+  border: 1px solid rgba(55, 47, 69, 0.95);
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+}
+frame > border { border: none; }
+
+label { color: #eee7f3; }
+label.title, .greeting, label.title-1 { color: #e8b84e; font-weight: 700; font-size: 22px; }
+
+/* Soat */
+.clock, label.clock { color: #eee7f3; font-size: 56px; font-weight: 200; text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6); }
+
+entry, dropdown > button, combobox button, spinbutton {
+  background: #24202f;
+  color: #eee7f3;
+  border: 1px solid #372f45;
+  border-radius: 14px;
+  min-height: 42px;
+  padding: 0 14px;
+  caret-color: #3cc4b4;
+}
+entry:focus-within { border-color: #3cc4b4; box-shadow: 0 0 0 3px rgba(60, 196, 180, 0.25); }
+
+button {
+  background: #24202f;
+  color: #eee7f3;
+  border: 1px solid #372f45;
+  border-radius: 14px;
+  min-height: 40px;
+  padding: 0 18px;
+  font-weight: 600;
+}
+button:hover { background: #372f45; }
+button.suggested-action {
+  background: linear-gradient(135deg, #3cc4b4, #2fa596);
+  color: #13111a;
+  border: none;
+}
+button.suggested-action:hover { background: #3cc4b4; }
+button.destructive-action { background: #e46c6c; color: #13111a; border: none; }
+
+popover > contents, popover.menu > contents {
+  background: #1a1723;
+  border: 1px solid #372f45;
+  border-radius: 14px;
+  color: #eee7f3;
+}
+modelbutton:hover, popover row:hover { background: #372f45; }
+
+infobar, .error { background: rgba(228, 108, 108, 0.2); color: #e46c6c; border-radius: 12px; }

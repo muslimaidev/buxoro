@@ -1,0 +1,26 @@
+# ReGreet — Buxoro login ekrani
+[background]
+path = "/usr/share/backgrounds/buxoro/buxoro.png"
+fit = "Cover"
+
+[GTK]
+application_prefer_dark_theme = true
+cursor_theme_name = "Bibata-Modern-Classic"
+cursor_blink = true
+font_name = "Inter 13"
+icon_theme_name = "Papirus-Dark"
+theme_name = "adw-gtk3-dark"
+
+[commands]
+reboot = ["systemctl", "reboot"]
+poweroff = ["systemctl", "poweroff"]
+
+[appearance]
+greeting_msg = "Xush kelibsiz"
+
+[widget.clock]
+format = "%H:%M"
+resolution = "1s"
+label_width = 160
+valign = "top"
+halign = "center"

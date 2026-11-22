@@ -1,0 +1,9 @@
+[Unit]
+Description=Buxoro: GitHub'dagi o'zgarishlarni olib kelish
+Documentation=file://%h/.local/bin/bx-sync
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/bx-sync
+Nice=10
+IOSchedulingClass=idle

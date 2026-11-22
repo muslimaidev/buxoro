@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# bx-keys — tezkor tugmalar ro'yxati (Hyprland konfiguratsiyasidan avtomatik)
+f="${XDG_CACHE_HOME:-$HOME/.cache}/buxoro/keys.tsv"
+[[ -r $f ]] || { notify-send -a buxoro "Ro‘yxat topilmadi" "Hyprland konfiguratsiyasini qayta yuklang (SUPER+SHIFT+R)"; exit 1; }
+awk -F'\t' '{ printf "%-38s  %s\n", $1, $2 }' "$f" |
+    fuzzel --dmenu --prompt "  " --width 78 --lines 18 --font "JetBrainsMono Nerd Font:size=11" \
+        --placeholder "Tugmani qidirish…" >/dev/null

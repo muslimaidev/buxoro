@@ -1,0 +1,28 @@
+# Buxoro — tungi mavzu: Poyi Kalon ustidagi tun. Siyohrang osmon, Mir-Arab
+# gumbazlarining feruzasi, Kalon minorasining pishgan g'ishti va zardo'zi oltini.
+# Har bir rang 6 xonali hex (# belgisisiz). Shablonlarda {{nom}}, {{nom.hex}}, {{nom.rgb}}.
+name="Buxoro"
+mode="dark"
+gtk_theme="adw-gtk3-dark"
+color_scheme="prefer-dark"
+icon_theme="Papirus-Dark"
+wallpaper="buxoro.png"
+wallpaper_style="kalon"
+pair="ark"
+
+bg="13111a"        # tungi osmon — asosiy fon
+bg_alt="1a1723"    # panel, yon oynalar
+surface="24202f"   # kartalar, maydonlar
+overlay="372f45"   # chegaralar, tanlangan fon
+muted="7c7289"     # izohlar, nofaol matn
+subtext="b9b0c5"   # ikkinchi darajali matn
+fg="eee7f3"        # asosiy matn
+
+accent="3cc4b4"    # feruza — Mir-Arab gumbazi
+accent2="d4835a"   # pishgan g'isht — Kalon minorasi
+gold="e8b84e"      # zardo'zi oltini
+red="e46c6c"
+green="9dd08a"
+yellow="eecb7c"
+purple="ab8ce8"
+orange="f0a160"

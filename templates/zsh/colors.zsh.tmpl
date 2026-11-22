@@ -1,0 +1,8 @@
+# AVTOMATIK YARATILGAN FAYL — mavzu: {{name}}
+export FZF_DEFAULT_OPTS="--height=45% --layout=reverse --border=rounded --info=inline-right --pointer=▌ --marker=▏ --prompt='  ' \
+  --color=bg+:{{surface}},bg:-1,spinner:{{gold}},hl:{{accent}} \
+  --color=fg:{{subtext}},header:{{accent2}},info:{{muted}},pointer:{{accent}} \
+  --color=marker:{{gold}},fg+:{{fg}},prompt:{{accent}},hl+:{{gold}} \
+  --color=border:{{overlay}},gutter:-1"
+export FZF_CTRL_T_OPTS="--preview 'bat -n --color=always --line-range :200 {} 2>/dev/null || eza --tree --level=2 --icons=always {}'"
+export FZF_ALT_C_OPTS="--preview 'eza --tree --level=2 --icons=always {}'"

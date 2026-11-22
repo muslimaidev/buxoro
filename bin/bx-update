@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# bx-update — tizim, AUR va Neovim plaginlarini yangilash
+set -e
+if command -v paru >/dev/null; then paru -Syu
+elif command -v yay >/dev/null; then yay -Syu
+else sudo pacman -Syu
+fi
+if command -v nvim >/dev/null; then
+    echo ":: Neovim plaginlari yangilanmoqda…"
+    nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
+fi
+pacnew=$(find /etc -name '*.pacnew' 2>/dev/null | wc -l)
+(( pacnew > 0 )) && echo ":: Diqqat: /etc ichida $pacnew ta .pacnew fayl bor (pacdiff bilan ko‘rib chiqing)."
+pkill -RTMIN+9 -x waybar 2>/dev/null || true
+echo ":: Tayyor."

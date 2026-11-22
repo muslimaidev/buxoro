@@ -1,0 +1,39 @@
+# AVTOMATIK YARATILGAN FAYL — manba: templates/fuzzel/fuzzel.ini.tmpl
+[main]
+font=Inter:size=13
+dpi-aware=no
+prompt="   "
+icon-theme={{icon_theme}}
+icons-enabled=yes
+terminal=footclient -e
+layer=overlay
+lines=8
+width=36
+horizontal-pad=24
+vertical-pad=18
+inner-pad=12
+line-height=26
+fields=filename,name,generic,keywords
+match-mode=fzf
+show-actions=no
+exit-on-keyboard-focus-loss=yes
+
+[colors]
+background={{bg.hex}}ee
+text={{subtext.hex}}ff
+prompt={{accent.hex}}ff
+placeholder={{muted.hex}}ff
+input={{fg.hex}}ff
+match={{accent.hex}}ff
+selection={{surface.hex}}ff
+selection-text={{fg.hex}}ff
+selection-match={{gold.hex}}ff
+counter={{muted.hex}}ff
+border={{accent.hex}}cc
+
+[border]
+width=2
+radius=16
+
+[dmenu]
+exit-immediately-if-empty=yes

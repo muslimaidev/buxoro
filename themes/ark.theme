@@ -1,0 +1,27 @@
+# Ark — kunduzgi mavzu: Ark qal'asining quyoshda qizigan devorlari. Qumrang
+# suvoq, to'q feruza koshin va g'isht-jigarrang urg'u.
+name="Ark"
+mode="light"
+gtk_theme="adw-gtk3"
+color_scheme="prefer-light"
+icon_theme="Papirus-Light"
+wallpaper="ark.png"
+wallpaper_style="kalon"
+pair="buxoro"
+
+bg="f6f0e5"
+bg_alt="ede5d6"
+surface="e1d6c2"
+overlay="ccbfa5"
+muted="8b7f6b"
+subtext="52493d"
+fg="251f18"
+
+accent="0d8276"
+accent2="ad5732"
+gold="9a6b0e"
+red="bd3a3a"
+green="3e7d33"
+yellow="8c6e0b"
+purple="6d4ab3"
+orange="b55f1e"

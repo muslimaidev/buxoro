@@ -1,0 +1,29 @@
+# Printer drayverlari — install.sh markaga qarab tanlaydi.
+# Zamonaviy printerlarning aksariyati drayversiz (IPP Everywhere) ishlaydi;
+# bular faqat eski modellar uchun kerak.
+[hp]
+hplip
+[canon]
+cnijfilter2
+gutenprint
+[epson]
+epson-inkjet-printer-escpr
+epson-inkjet-printer-escpr2
+gutenprint
+[brother]
+brlaser
+foomatic-db-engine
+foomatic-db
+[samsung]
+splix
+foomatic-db-engine
+foomatic-db
+[xerox]
+foomatic-db-engine
+foomatic-db
+foomatic-db-ppds
+[universal]
+gutenprint
+foomatic-db-engine
+foomatic-db
+foomatic-db-ppds

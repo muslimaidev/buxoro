@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# bx-sync — GitHub'dagi o'zgarishlarni tizimga avtomatik olib kelish
+#
+#   bx-sync           yangilanishni tekshirish va qo'llash (taymer shuni ishga tushiradi)
+#   bx-sync status    holat: oxirgi tekshiruv, kutilayotgan o'zgarishlar
+#   bx-sync on|off    avtomatik yangilanishni yoqish/o'chirish
+#   bx-sync log       oxirgi ishga tushishlar jurnali
+#
+# Xavfsizlik: faqat "fast-forward" — sizning mahalliy o'zgarishlaringiz hech qachon
+# ustidan yozilmaydi. Repozitoriyada saqlanmagan o'zgarish bo'lsa, yangilanish
+# to'xtatiladi va bildirishnoma keladi.
+set -uo pipefail
+
+BX_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/buxoro"
+mkdir -p "$STATE"
+
+say() {
+    printf '%s\n' "$*"
+    printf '%s  %s\n' "$(date '+%F %T')" "$*" >> "$STATE/sync.log"
+}
+notify() { command -v notify-send >/dev/null && notify-send -a buxoro -i software-update-available "$@" 2>/dev/null || true; }
+
+# Taymerdan ishga tushganda Hyprland o'zgaruvchilari bo'lmasligi mumkin — topib olamiz
+find_hyprland() {
+    [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && return
+    local dir="${XDG_RUNTIME_DIR:-/run/user/$UID}/hypr"
+    local sig; sig=$(ls -t "$dir" 2>/dev/null | head -1)
+    [[ -n $sig && -S $dir/$sig/.socket.sock ]] && export HYPRLAND_INSTANCE_SIGNATURE=$sig
+    [[ -z ${WAYLAND_DISPLAY:-} ]] && export WAYLAND_DISPLAY=wayland-1
+}
+
+git_() { git -C "$BX_DIR" "$@"; }
+
+cmd_sync() {
+    git_ rev-parse --git-dir >/dev/null 2>&1 || { say "Bu papka git repozitoriyasi emas: $BX_DIR"; exit 0; }
+    git_ rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1 || { say "Masofaviy tarmoq (upstream) sozlanmagan"; exit 0; }
+
+    # Internet bo'lmasa — jimgina chiqamiz, keyingi safar urinib ko'ramiz
+    if ! timeout 60 git -C "$BX_DIR" fetch --quiet 2>/dev/null; then
+        say "GitHub bilan bog'lanib bo'lmadi (internet?)"; exit 0
+    fi
+    date +%s > "$STATE/last-check"
+
+    local behind ahead
+    behind=$(git_ rev-list --count 'HEAD..@{u}')
+    ahead=$(git_ rev-list --count '@{u}..HEAD')
+    if (( behind == 0 )); then
+        say "Yangilanish yo'q"; exit 0
+    fi
+    if (( ahead > 0 )); then
+        say "Mahalliy commit'lar bor ($ahead ta) va GitHub'da ham yangilik bor — avtomatik birlashtirilmaydi"
+        notify "Buxoro: qo'lda birlashtirish kerak" "cd $BX_DIR && git pull --rebase"
+        exit 0
+    fi
+    if [[ -n $(git_ status --porcelain --untracked-files=no) ]]; then
+        say "Saqlanmagan o'zgarishlar bor — yangilanish to'xtatildi"
+        notify "Buxoro: yangilanish kutilmoqda" "Repozitoriyada saqlanmagan o'zgarishlar bor: cd $BX_DIR && git status"
+        exit 0
+    fi
+
+    local old new changes log
+    old=$(git_ rev-parse HEAD)
+    if ! git_ merge --ff-only --quiet '@{u}'; then
+        say "Fast-forward imkonsiz"; notify "Buxoro: yangilanish xatosi" "cd $BX_DIR && git status"; exit 1
+    fi
+    new=$(git_ rev-parse HEAD)
+    changes=$(git_ diff --name-only "$old" "$new")
+    log=$(git_ log --format='• %s' "$old..$new" | head -8)
+    say "Yangilandi: ${old:0:7} → ${new:0:7} ($behind ta commit)"
+
+    apply_changes "$old" "$new" "$changes"
+    notify "Buxoro yangilandi ($behind ta o'zgarish)" "$log"
+}
+
+apply_changes() {
+    local old=$1 new=$2 changes=$3 extra=()
+
+    # Yangi skriptlarni ~/.local/bin ga ulash
+    local s
+    for s in "$BX_DIR"/bin/bx-*; do
+        [[ -e "$HOME/.local/bin/$(basename "$s")" ]] || { ln -s "$s" "$HOME/.local/bin/$(basename "$s")"; say "Yangi skript: $(basename "$s")"; }
+    done
+
+    # Ranglar/shablonlar yoki ilova sozlamalari o'zgargan bo'lsa — render va qayta yuklash
+    find_hyprland
+    if grep -qE '^(templates|themes|config|wallpapers)/' <<<"$changes"; then
+        BX_NO_WALL=1 BX_QUIET=1 "$BX_DIR/bin/bx-theme" apply "$("$BX_DIR/bin/bx-theme" current)" >/dev/null 2>&1 || "$BX_DIR/bin/bx-theme" render >/dev/null
+        say "Mavzu qayta yaratildi, ilovalar yangilandi"
+    fi
+    if grep -q '^config/systemd/' <<<"$changes"; then
+        systemctl --user daemon-reload 2>/dev/null || true
+    fi
+
+    # Root huquqi kerak bo'lgan narsalar avtomatik bajarilmaydi — faqat eslatma
+    if grep -qE '^packages.*\.txt$' <<<"$changes"; then
+        local added
+        added=$(git_ diff "$old" "$new" -- 'packages*.txt' | grep -E '^\+[a-z0-9]' | sed 's/^+//' | tr '\n' ' ')
+        [[ -n $added ]] && extra+=("Yangi paketlar: $added → ./install.sh --no-boot --no-greeter")
+    fi
+    grep -q '^boot/' <<<"$changes" && extra+=("Yuklanish mavzusi yangilandi → bx-boot all / bx-greeter install")
+    # Eslatmalar install.sh / bx-boot bajarilguncha saqlanadi
+    if (( ${#extra[@]} )); then
+        printf '%s\n' "${extra[@]}" >> "$STATE/sync-pending"
+        sort -u -o "$STATE/sync-pending" "$STATE/sync-pending"
+        say "${extra[*]}"
+        notify "Buxoro: qo'shimcha qadam kerak" "$(printf '%s\n' "${extra[@]}")"
+    fi
+}
+
+cmd_status() {
+    local last="hech qachon"
+    [[ -f $STATE/last-check ]] && last=$(date -d "@$(cat "$STATE/last-check")" '+%F %H:%M')
+    echo "Repozitoriya:     $BX_DIR"
+    echo "Masofaviy manzil: $(git_ remote get-url origin 2>/dev/null || echo yo\'q)"
+    echo "Joriy versiya:    $(git_ log -1 --format='%h  %s  (%cr)' 2>/dev/null)"
+    echo "Oxirgi tekshiruv: $last"
+    local en; en=$(systemctl --user is-enabled bx-sync.timer 2>/dev/null)
+    [[ $en == enabled ]] && en="yoqilgan (har soatda)" || en="o'chiq (yoqish: bx-sync on)"
+    echo "Avtomatik:        $en"
+    systemctl --user list-timers bx-sync.timer --no-pager 2>/dev/null | sed -n '2p' | awk '{print "Keyingi tekshiruv: " $1 " " $2 " " $3}'
+    if [[ -s $STATE/sync-pending ]]; then echo; echo "Bajarilishi kerak:"; sed 's/^/  • /' "$STATE/sync-pending"; fi
+    return 0
+}
+
+case "${1:-sync}" in
+    sync|now) cmd_sync ;;
+    status)   cmd_status ;;
+    on)       systemctl --user enable --now bx-sync.timer && echo "Avtomatik yangilanish yoqildi (har soatda)" ;;
+    off)      systemctl --user disable --now bx-sync.timer && echo "Avtomatik yangilanish o'chirildi" ;;
+    log)      tail -n 30 "$STATE/sync.log" 2>/dev/null || echo "Jurnal bo'sh" ;;
+    -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *) echo "Noma'lum buyruq: $1 (bx-sync --help)" >&2; exit 1 ;;
+esac

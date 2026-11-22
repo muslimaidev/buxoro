@@ -1,0 +1,11 @@
+-- Shaxsiy sozlamalar namunasi. Nusxa oling:  cp user.lua.example user.lua
+-- user.lua gitga kirmaydi, shuning uchun yangilanishlarda saqlanib qoladi.
+
+-- Tashqi monitor noutbukning o'ng tomonida:
+-- hl.monitor({ output = "HDMI-A-1", mode = "1920x1080@75", position = "auto-right", scale = 1 })
+
+-- Qo'shimcha tugma:
+-- hl.bind("SUPER + T", hl.dsp.exec_cmd("telegram-desktop"))
+
+-- Telegram doim 3-ish stolida ochilsin:
+-- hl.window_rule({ match = { class = "^(org.telegram.desktop)$" }, workspace = "3 silent" })

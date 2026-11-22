@@ -1,0 +1,25 @@
+# yazi — Rust'da yozilgan, asinxron, eng tez terminal fayl menejeri
+[mgr]
+show_hidden = false
+sort_by = "natural"
+sort_dir_first = true
+linemode = "size"
+ratio = [1, 3, 4]
+
+[preview]
+max_width = 1200
+max_height = 1600
+
+[opener]
+pdf   = [{ run = 'zathura "$@"', orphan = true, desc = "Zathura" }]
+image = [{ run = 'imv "$@"', orphan = true, desc = "imv" }]
+video = [{ run = 'mpv "$@"', orphan = true, desc = "mpv" }]
+tex   = [{ run = 'nvim "$@"', block = true, desc = "Neovim" }]
+
+[open]
+prepend_rules = [
+  { mime = "application/pdf", use = "pdf" },
+  { mime = "image/*", use = "image" },
+  { mime = "video/*", use = "video" },
+  { name = "*.tex", use = "tex" },
+]

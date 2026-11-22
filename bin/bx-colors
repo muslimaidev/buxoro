@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""bx-colors — fon rasmidan Buxoro palitrasini yaratish (Material You uslubida).
+
+  bx-colors RASM [dark|light]      → ~/.local/state/buxoro/themes/auto.theme
+  bx-colors RASM [dark|light] -    → natijani ekranga chiqarish
+
+Rasmdan eng ko'p uchraydigan va to'yingan ranglar olinadi: urg'u, ikkinchi urg'u
+va iliq "oltin" rang shulardan tanlanadi; fon va matn ranglari asosiy tusdan
+qurilib, o'qilishi uchun yorug'lik kontrasti kafolatlanadi. Faqat Python va
+ImageMagick kerak.
+"""
+import colorsys, os, pathlib, re, shutil, subprocess, sys
+
+
+def die(msg):
+    print(f"bx-colors: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def sample(img):
+    magick = shutil.which("magick") or shutil.which("convert")
+    if not magick:
+        die("ImageMagick topilmadi (pacman -S imagemagick)")
+    out = subprocess.run([magick, f"{img}[0]", "-resize", "256x256>", "-colors", "48", "-depth", "8",
+                          "-format", "%c", "histogram:info:-"], capture_output=True, text=True)
+    if out.returncode != 0:
+        die(f"rasmni o'qib bo'lmadi: {img}")
+    cols = []
+    for line in out.stdout.splitlines():
+        m = re.search(r"^\s*(\d+):.*?#([0-9A-Fa-f]{6})", line)
+        if m:
+            r, g, b = (int(m.group(2)[i:i + 2], 16) / 255 for i in (0, 2, 4))
+            h, l, s = colorsys.rgb_to_hls(r, g, b)
+            cols.append((int(m.group(1)), h, l, s))
+    if not cols:
+        die("rasmda rang topilmadi")
+    total = sum(c[0] for c in cols)
+    return [(n / total, h, l, s) for n, h, l, s in cols]
+
+
+def hexc(h, l, s):
+    r, g, b = colorsys.hls_to_rgb(h % 1.0, max(0, min(1, l)), max(0, min(1, s)))
+    return "".join(f"{round(v * 255):02x}" for v in (r, g, b))
+
+
+def hue_dist(a, b):
+    d = abs(a - b) % 1.0
+    return min(d, 1 - d)
+
+
+def clamp(v, lo, hi):
+    return max(lo, min(hi, v))
+
+
+def pick(cols, score, exclude=(), min_dist=0.0):
+    best, best_s = None, 0.0
+    for c in cols:
+        if any(hue_dist(c[1], e) < min_dist for e in exclude):
+            continue
+        sc = score(c)
+        if sc > best_s:
+            best, best_s = c, sc
+    return best
+
+
+def build(img, mode):
+    cols = sample(img)
+    dark = mode == "dark"
+    vivid = lambda c: c[0] ** 0.6 * c[3] ** 2 * max(0.0, 1 - abs(c[2] - 0.55) * 1.6) if c[3] > 0.18 else 0
+
+    acc = pick(cols, vivid)
+    acc_h, acc_s = (acc[1], acc[3]) if acc else (0.48, 0.55)          # rang bo'lmasa — feruza
+    acc2 = pick(cols, vivid, exclude=[acc_h], min_dist=0.12)
+    acc2_h, acc2_s = (acc2[1], acc2[3]) if acc2 else ((acc_h + 0.42) % 1, acc_s)
+    warm = pick(cols, lambda c: vivid(c) + 0.001 if 0.06 <= c[1] <= 0.17 else 0)
+    gold_h = warm[1] if warm else 0.11
+
+    # Fon tusi: eng ko'p joy egallagan rang (juda kulrang bo'lsa — urg'u tusi)
+    base = max(cols, key=lambda c: c[0])
+    base_h, base_s = (base[1], base[3]) if base[3] > 0.08 else (acc_h, 0.10)
+    tint = clamp(base_s * 0.5, 0.06, 0.22)
+
+    if dark:
+        L = dict(bg=0.075, bg_alt=0.105, surface=0.145, overlay=0.22, muted=0.50, subtext=0.74, fg=0.93)
+        aL, aS = clamp(acc[2] if acc else 0.62, 0.60, 0.70), clamp(acc_s, 0.45, 0.80)
+        a2L, a2S = 0.66, clamp(acc2_s, 0.40, 0.75)
+        semL, semS = 0.68, 0.62
+    else:
+        L = dict(bg=0.955, bg_alt=0.92, surface=0.865, overlay=0.78, muted=0.52, subtext=0.33, fg=0.13)
+        aL, aS = clamp(acc[2] if acc else 0.36, 0.30, 0.38), clamp(acc_s, 0.55, 0.85)
+        a2L, a2S = 0.38, clamp(acc2_s, 0.50, 0.80)
+        semL, semS = 0.40, 0.65
+
+    p = {k: hexc(base_h, v, tint if k not in ("muted", "subtext", "fg") else tint * 0.6) for k, v in L.items()}
+    p["accent"] = hexc(acc_h, aL, aS)
+    p["accent2"] = hexc(acc2_h, a2L, a2S)
+    p["gold"] = hexc(gold_h, 0.64 if dark else 0.36, 0.72)
+    # Semantik ranglar urg'u tusiga ozgina moslashtiriladi (uyg'unlik uchun)
+    nudge = lambda h: h + (((acc_h - h + 0.5) % 1) - 0.5) * 0.08
+    for name, h in (("red", 0.0), ("green", 0.29), ("yellow", 0.12), ("purple", 0.74), ("orange", 0.07)):
+        p[name] = hexc(nudge(h), semL, semS)
+    return p
+
+
+def main():
+    args = [a for a in sys.argv[1:]]
+    if not args or args[0] in ("-h", "--help"):
+        print(__doc__.strip()); return
+    img = os.path.abspath(os.path.expanduser(args[0]))
+    if not os.path.isfile(img):
+        die(f"fayl topilmadi: {img}")
+    mode = args[1] if len(args) > 1 and args[1] in ("dark", "light") else "dark"
+    p = build(img, mode)
+    light = mode == "light"
+    text = f'''# Avtomatik — {os.path.basename(img)} rasmidan yaratilgan (bx-colors)
+name="Avtomatik"
+mode="{mode}"
+gtk_theme="{'adw-gtk3' if light else 'adw-gtk3-dark'}"
+color_scheme="{'prefer-light' if light else 'prefer-dark'}"
+icon_theme="{'Papirus-Light' if light else 'Papirus-Dark'}"
+wallpaper="{img}"
+pair="auto"
+
+''' + "\n".join(f'{k}="{p[k]}"' for k in
+                ("bg", "bg_alt", "surface", "overlay", "muted", "subtext", "fg",
+                 "accent", "accent2", "gold", "red", "green", "yellow", "purple", "orange")) + "\n"
+    if args[-1] == "-":
+        print(text, end=""); return
+    out = pathlib.Path(os.environ.get("XDG_STATE_HOME", pathlib.Path.home() / ".local/state")) / "buxoro/themes/auto.theme"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text)
+    print(out)
+
+
+if __name__ == "__main__":
+    main()

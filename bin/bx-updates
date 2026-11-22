@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# bx-updates — Waybar uchun yangilanishlar soni (rasmiy + AUR). 0 bo'lsa modul yashirinadi.
+repo=$(checkupdates 2>/dev/null | wc -l)
+aur=0
+if command -v paru >/dev/null; then aur=$(paru -Qua 2>/dev/null | wc -l)
+elif command -v yay >/dev/null; then aur=$(yay -Qua 2>/dev/null | wc -l)
+fi
+total=$((repo + aur))
+if (( total == 0 )); then
+    echo '{"text":""}'
+else
+    printf '{"text":"󰚰 %d","tooltip":"Yangilanishlar: %d rasmiy, %d AUR\\nBosing — yangilash","class":"pending"}\n' "$total" "$repo" "$aur"
+fi

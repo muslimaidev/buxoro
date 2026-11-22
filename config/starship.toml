@@ -1,0 +1,55 @@
+# Buxoro — Starship. Faqat terminal ranglari ishlatiladi, shuning uchun
+# mavzu almashganda prompt ham avtomatik moslashadi.
+"$schema" = 'https://starship.rs/config-schema.json'
+add_newline = true
+command_timeout = 400
+format = """
+$directory$git_branch$git_status$python$nodejs$rust$c$lua$cmd_duration
+$character"""
+
+[directory]
+style = "bold cyan"
+truncation_length = 3
+truncate_to_repo = true
+read_only = " 󰌾"
+format = "[$path]($style)[$read_only]($read_only_style) "
+
+[git_branch]
+symbol = " "
+style = "bold purple"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+style = "yellow"
+format = '([$all_status$ahead_behind]($style) )'
+
+[cmd_duration]
+min_time = 1500
+style = "bright-black"
+format = "[ $duration]($style) "
+
+[character]
+success_symbol = "[❯](bold cyan)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold green)"
+
+[python]
+symbol = " "
+style = "yellow"
+format = '[$symbol($version )(\($virtualenv\) )]($style)'
+
+[nodejs]
+symbol = " "
+format = "[$symbol($version )]($style)"
+
+[rust]
+symbol = " "
+format = "[$symbol($version )]($style)"
+
+[c]
+symbol = " "
+format = "[$symbol($version )]($style)"
+
+[lua]
+symbol = " "
+format = "[$symbol($version )]($style)"

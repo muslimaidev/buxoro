@@ -1,0 +1,116 @@
+# Buxoro — Plymouth splash ekrani
+# Fon: Poyi Kalon siluyeti; markazda gerb asta paydo bo'ladi; ostida uchta
+# oltin nuqta to'lqinlanadi. Shifrlangan disk uchun parol maydoni bor.
+
+Window.SetBackgroundTopColor(0.075, 0.067, 0.102);
+Window.SetBackgroundBottomColor(0.075, 0.067, 0.102);
+
+screen_x = Window.GetX();
+screen_y = Window.GetY();
+screen_w = Window.GetWidth();
+screen_h = Window.GetHeight();
+
+# ── Fon ──
+bg_image = Image("bg.png");
+bg_scaled = bg_image.Scale(screen_w, screen_h);
+bg = Sprite(bg_scaled);
+bg.SetPosition(screen_x, screen_y, -100);
+
+# ── Gerb ──
+logo_image = Image("logo.png");
+logo = Sprite(logo_image);
+logo_x = screen_x + screen_w / 2 - logo_image.GetWidth() / 2;
+logo_y = screen_y + screen_h * 0.36 - logo_image.GetHeight() / 2;
+logo.SetPosition(logo_x, logo_y, 10);
+logo.SetOpacity(0);
+
+# ── Yuklanish nuqtalari ──
+dot_image = Image("dot.png");
+dots_y = logo_y + logo_image.GetHeight() + 36;
+for (i = 0; i < 3; i++) {
+    dot[i] = Sprite(dot_image);
+    dot[i].SetPosition(screen_x + screen_w / 2 - 34 + i * 30, dots_y, 10);
+    dot[i].SetOpacity(0);
+}
+
+frame = 0;
+
+fun refresh_callback () {
+    global.frame = global.frame + 1;
+    f = global.frame;
+
+    # Gerb ~0.8 soniyada paydo bo'ladi
+    fade = f / 40;
+    if (fade > 1) {
+        fade = 1;
+    }
+    logo.SetOpacity(fade);
+
+    # Nuqtalar navbatma-navbat yorishadi va sakraydi
+    for (i = 0; i < 3; i++) {
+        phase = f / 9 - i * 0.9;
+        s = Math.Sin(phase);
+        o = 0.35 + 0.65 * (s + 1) / 2;
+        dot[i].SetOpacity(o * fade);
+        dot[i].SetY(dots_y - 6 * (s + 1) / 2);
+    }
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# ── Parol so'rovi (LUKS) ──
+entry_image = Image("entry.png");
+entry = Sprite(entry_image);
+entry_x = screen_x + screen_w / 2 - entry_image.GetWidth() / 2;
+entry_y = dots_y + 50;
+entry.SetPosition(entry_x, entry_y, 20);
+entry.SetOpacity(0);
+
+prompt_sprite = Sprite();
+bullets_sprite = Sprite();
+
+fun display_password_callback (prompt, bullets) {
+    entry.SetOpacity(1);
+    for (i = 0; i < 3; i++) {
+        dot[i].SetOpacity(0);
+    }
+
+    p_image = Image.Text(prompt, 0.72, 0.69, 0.77, 1);
+    prompt_sprite.SetImage(p_image);
+    prompt_sprite.SetPosition(screen_x + screen_w / 2 - p_image.GetWidth() / 2, entry_y - p_image.GetHeight() - 12, 21);
+    prompt_sprite.SetOpacity(1);
+
+    str = "";
+    for (i = 0; i < bullets && i < 24; i++) {
+        str = str + "● ";
+    }
+    if (str == "") {
+        str = " ";
+    }
+    b_image = Image.Text(str, 0.91, 0.72, 0.31, 1);
+    bullets_sprite.SetImage(b_image);
+    bullets_sprite.SetPosition(screen_x + screen_w / 2 - b_image.GetWidth() / 2,
+                               entry_y + entry_image.GetHeight() / 2 - b_image.GetHeight() / 2, 22);
+    bullets_sprite.SetOpacity(1);
+}
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+
+fun display_normal_callback () {
+    entry.SetOpacity(0);
+    prompt_sprite.SetOpacity(0);
+    bullets_sprite.SetOpacity(0);
+}
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+
+# ── Tizim xabarlari (masalan, fsck) ──
+message_sprite = Sprite();
+fun message_callback (text) {
+    m_image = Image.Text(text, 0.49, 0.45, 0.54, 1);
+    message_sprite.SetImage(m_image);
+    message_sprite.SetPosition(screen_x + screen_w / 2 - m_image.GetWidth() / 2, screen_y + screen_h * 0.92, 30);
+}
+Plymouth.SetMessageFunction(message_callback);
+
+fun quit_callback () {
+    logo.SetOpacity(1);
+}
+Plymouth.SetQuitFunction(quit_callback);

@@ -1,0 +1,221 @@
+// AVTOMATIK YARATILGAN FAYL — manba: templates/waybar/config.jsonc.tmpl
+// Buxoro — Waybar
+{
+  "layer": "top",
+  "position": "top",
+  "height": 38,
+  "margin-top": 6,
+  "margin-left": 8,
+  "margin-right": 8,
+  "spacing": 6,
+  "reload_style_on_change": true,
+
+  "modules-left": ["custom/logo", "hyprland/workspaces", "hyprland/window"],
+  "modules-center": ["mpris", "clock", "custom/updates"],
+  "modules-right": [
+    "tray",
+    "custom/printer",
+    "group/hardware",
+    "hyprland/language",
+    "pulseaudio",
+    "backlight",
+    "network",
+    "bluetooth",
+    "power-profiles-daemon",
+    "battery",
+    "custom/notification",
+    "custom/power"
+  ],
+
+  "custom/logo": {
+    "format": "󰣇",
+    "tooltip-format": "Chap: dasturlar · O'ng: mavzular · O'rta: fon rasmlari",
+    "on-click": "pkill -x fuzzel || fuzzel",
+    "on-click-right": "bx-picker theme",
+    "on-click-middle": "bx-picker wallpaper"
+  },
+
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "persistent-workspaces": { "*": 5 },
+    "on-scroll-up": "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e-1\" })'",
+    "on-scroll-down": "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e+1\" })'"
+  },
+
+  "hyprland/window": {
+    "format": "{title}",
+    "max-length": 48,
+    "separate-outputs": true,
+    "rewrite": {
+      "(.*) — Mozilla Firefox": "󰈹  $1",
+      "(.*) - nvim": "  $1",
+      "": ""
+    }
+  },
+
+  "clock": {
+    "format": "{:%H:%M}",
+    "format-alt": "{:%A, %d-%B %Y}",
+    "locale": "uz_UZ.UTF-8",
+    "tooltip-format": "<tt>{calendar}</tt>",
+    "calendar": {
+      "mode": "month",
+      "weeks-pos": "",
+      "on-scroll": 1,
+      "format": {
+        "months": "<span color='{{gold}}'><b>{}</b></span>",
+        "today": "<span color='{{accent}}'><b><u>{}</u></b></span>"
+      }
+    },
+    "actions": { "on-scroll-up": "shift_up", "on-scroll-down": "shift_down" }
+  },
+
+  "tray": { "icon-size": 16, "spacing": 8 },
+
+  "group/hardware": {
+    "orientation": "horizontal",
+    "drawer": { "transition-duration": 300, "transition-left-to-right": false },
+    "modules": ["cpu", "memory", "temperature", "disk"]
+  },
+  "cpu": {
+    "interval": 3,
+    "format": "  {usage}%",
+    "on-click": "footclient -e btop || foot -e btop"
+  },
+  "memory": {
+    "interval": 5,
+    "format": "  {percentage}%",
+    "tooltip-format": "{used:0.1f} / {total:0.1f} GiB ishlatilmoqda"
+  },
+  "temperature": {
+    "interval": 5,
+    "critical-threshold": 85,
+    "format": " {temperatureC}°",
+    "format-critical": " {temperatureC}°"
+  },
+  "disk": {
+    "interval": 60,
+    "format": "󰋊 {percentage_used}%",
+    "path": "/"
+  },
+
+  "hyprland/language": {
+    "format": "󰌌 {}",
+    "format-en": "EN",
+    "format-uz": "UZ",
+    "format-ru": "RU",
+    "on-click": "hyprctl switchxkblayout all next"
+  },
+
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-muted": "󰝟 ",
+    "format-bluetooth": "󰂰 {volume}%",
+    "format-icons": { "default": ["󰕿", "󰖀", "󰕾"], "headphone": "󰋋" },
+        "on-click": "swayosd-client --output-volume mute-toggle",
+    "on-scroll-up": "swayosd-client --output-volume +5",
+    "on-scroll-down": "swayosd-client --output-volume -5",
+    "on-click-right": "pavucontrol",
+    "tooltip-format": "{desc}"
+  },
+
+  "backlight": {
+    "format": "{icon} {percent}%",
+    "format-icons": ["󰃞", "󰃟", "󰃠"],
+    "on-scroll-up": "swayosd-client --brightness +5",
+    "on-scroll-down": "swayosd-client --brightness -5"
+  },
+
+  "network": {
+    "format-wifi": "󰤨 ",
+    "format-ethernet": "󰈀 ",
+    "format-disconnected": "󰤭 ",
+    "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ipaddr}",
+    "tooltip-format-ethernet": "{ifname}: {ipaddr}",
+    "on-click": "footclient -e nmtui || foot -e nmtui"
+  },
+
+  "bluetooth": {
+    "format": "󰂯",
+    "format-disabled": "󰂲",
+    "format-off": "󰂲",
+    "format-connected": "󰂱 {num_connections}",
+    "tooltip-format-connected": "{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}",
+    "on-click": "blueman-manager"
+  },
+
+  "power-profiles-daemon": {
+    "format": "{icon}",
+    "tooltip-format": "Quvvat rejimi: {profile}",
+    "format-icons": {
+      "default": "",
+      "performance": "󰓅",
+      "balanced": "󰾅",
+      "power-saver": "󰾆"
+    }
+  },
+
+  "battery": {
+    "interval": 30,
+    "states": { "warning": 25, "critical": 12 },
+    "format": "{icon} {capacity}%",
+    "format-charging": "󰂄 {capacity}%",
+    "format-plugged": "󰚥 {capacity}%",
+    "format-icons": ["󰁺", "󰁼", "󰁾", "󰂀", "󰁹"],
+    "tooltip-format": "{timeTo}"
+  },
+
+  "custom/notification": {
+    "tooltip-format": "Chap tugma: boshqaruv markazi\nO'ng tugma: bezovta qilmaslik",
+    "format": "{icon}",
+    "format-icons": {
+      "notification": "󱅫",
+      "none": "󰂚",
+      "dnd-notification": "󰂛",
+      "dnd-none": "󰂛",
+      "inhibited-notification": "󱅫",
+      "inhibited-none": "󰂚",
+      "dnd-inhibited-notification": "󰂛",
+      "dnd-inhibited-none": "󰂛"
+    },
+    "return-type": "json",
+    "exec-if": "which swaync-client",
+    "exec": "swaync-client -swb",
+    "on-click": "swaync-client -t -sw",
+    "on-click-right": "swaync-client -d -sw",
+    "escape": true
+  },
+
+  "custom/printer": {
+    "exec": "bx-printer waybar",
+    "return-type": "json",
+    "interval": 10,
+    "on-click": "bx-printer menu",
+    "on-click-right": "system-config-printer"
+  },
+
+  "custom/updates": {
+    "exec": "bx-updates",
+    "return-type": "json",
+    "interval": 1800,
+    "signal": 9,
+    "on-click": "footclient -e bx-update || foot -e bx-update"
+  },
+
+  "mpris": {
+    "format": "{player_icon} {dynamic}",
+    "format-paused": "{status_icon} <i>{dynamic}</i>",
+    "dynamic-len": 32,
+    "dynamic-order": ["title", "artist"],
+    "player-icons": { "default": "󰎆", "firefox": "󰈹", "spotify": "", "mpv": "" },
+    "status-icons": { "paused": "󰏤" },
+    "on-click": "playerctl play-pause"
+  },
+
+  "custom/power": {
+    "format": "⏻",
+    "tooltip-format": "Quvvat menyusi",
+    "on-click": "bx-power"
+  }
+}

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# bx-power — quvvat menyusi (fuzzel)
+choice=$(printf '%s\n' \
+    "  Qulflash" \
+    "󰍃  Chiqish" \
+    "󰤄  Uyqu" \
+    "  Qayta yuklash" \
+    "⏻  O‘chirish" |
+    fuzzel --dmenu --prompt "⏻  " --lines 5 --width 22 --placeholder "Tanlang…")
+
+case "$choice" in
+    *Qulflash*)       loginctl lock-session ;;
+    *Chiqish*)        command -v hyprshutdown >/dev/null && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()' ;;
+    *Uyqu*)           systemctl suspend ;;
+    *"Qayta yuklash"*) systemctl reboot ;;
+    *"O‘chirish"*)    systemctl poweroff ;;
+esac

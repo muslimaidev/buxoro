@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# bx-gamemode — o'yin rejimi: animatsiya, xiralik, soya, nur va bo'shliqlarni
+# o'chiradi (maksimal FPS, minimal kechikish). Qayta bosilsa — hammasi qaytadi.
+flag="${XDG_RUNTIME_DIR:-/tmp}/bx-gamemode"
+if [[ -e $flag ]]; then
+    rm -f "$flag"
+    hyprctl reload >/dev/null
+    notify-send -a buxoro -i input-gaming "O‘yin rejimi o‘chirildi" "Effektlar qaytdi"
+else
+    touch "$flag"
+    hyprctl eval 'hl.config({
+        animations = { enabled = false },
+        decoration = { blur = { enabled = false }, shadow = { enabled = false }, glow = { enabled = false }, rounding = 0 },
+        general = { gaps_in = 0, gaps_out = 0, border_size = 1 },
+    })' >/dev/null
+    notify-send -a buxoro -i input-gaming "O‘yin rejimi yoqildi" "Effektlarsiz, maksimal FPS"
+fi

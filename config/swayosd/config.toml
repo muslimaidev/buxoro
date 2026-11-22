@@ -1,0 +1,8 @@
+# SwayOSD — ovoz, yorug'lik, Caps Lock ko'rsatkichlari
+[server]
+top_margin = 0.88
+max_volume = 150
+min_brightness = 5
+show_percentage = true
+duration = 1100
+playerctl_format = "{artist} — {title}"

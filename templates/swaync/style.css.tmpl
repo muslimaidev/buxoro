@@ -1,0 +1,169 @@
+/* AVTOMATIK YARATILGAN FAYL — mavzu: {{name}}. Manba: templates/swaync/style.css.tmpl
+   swaync o'zining standart uslubini asos sifatida yuklaydi; bu yerda faqat
+   ranglar, shakllar va Buxoro uslubidagi bezaklar almashtiriladi. */
+
+:root {
+  --cc-bg: rgba({{bg.rgb}}, 0.88);
+  --noti-border-color: rgba({{overlay.rgb}}, 0.9);
+  --noti-bg: {{bg_alt.rgb}};
+  --noti-bg-alpha: 0.92;
+  --noti-bg-darker: {{surface}};
+  --noti-bg-hover: {{surface}};
+  --noti-bg-focus: rgba({{overlay.rgb}}, 0.6);
+  --noti-close-bg: rgba({{overlay.rgb}}, 0.8);
+  --noti-close-bg-hover: {{red}};
+  --text-color: {{fg}};
+  --text-color-disabled: {{muted}};
+  --bg-selected: {{accent}};
+  --border-radius: 16px;
+  --notification-icon-size: 52px;
+  --notification-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  --font-size-body: 13px;
+  --font-size-summary: 14px;
+}
+
+* {
+  font-family: "Inter", "JetBrainsMono Nerd Font", sans-serif;
+}
+
+/* ── Qalqib chiquvchi bildirishnomalar ── */
+.notification-row .notification-background .notification {
+  border: 1px solid rgba({{overlay.rgb}}, 0.9);
+  box-shadow: var(--notification-shadow);
+}
+.notification-row .notification-background .notification.critical {
+  border: 1px solid {{red}};
+  box-shadow: 0 0 0 1px rgba({{red.rgb}}, 0.4), var(--notification-shadow);
+}
+.notification-row .notification-background .notification.low {
+  opacity: 0.9;
+}
+.notification .summary { color: {{fg}}; }
+.notification .time    { color: {{muted}}; font-weight: 500; }
+.notification .body    { color: {{subtext}}; }
+.notification progressbar trough   { background: {{surface}}; border-radius: 99px; min-height: 6px; }
+.notification progressbar progress { background: linear-gradient(90deg, {{accent}}, {{gold}}); border-radius: 99px; min-height: 6px; }
+.notification .notification-action {
+  color: {{fg}};
+  background: {{surface}};
+  border: 1px solid {{overlay}};
+  border-radius: 10px;
+  margin: 4px;
+}
+.notification .notification-action:hover { background: {{overlay}}; }
+.close-button { background: rgba({{overlay.rgb}}, 0.8); color: {{fg}}; }
+.close-button:hover { background: {{red}}; color: {{bg}}; }
+
+/* ── Boshqaruv markazi ── */
+.control-center {
+  background: var(--cc-bg);
+  border: 1px solid rgba({{overlay.rgb}}, 0.9);
+  border-radius: 20px;
+  padding: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.control-center .control-center-list-placeholder { color: {{muted}}; opacity: 1; }
+
+.widget { margin: 6px 8px; }
+
+/* Yuqori qator: sozlamalar va quvvat menyusi */
+.widget-menubar > box > .menu-button-bar > button,
+.widget-menubar button {
+  background: {{surface}};
+  color: {{fg}};
+  border: 1px solid {{overlay}};
+  border-radius: 12px;
+  padding: 6px 14px;
+  font-weight: 600;
+}
+.widget-menubar button:hover { background: {{overlay}}; }
+.widget-menubar revealer button { margin: 3px 0; }
+.widget-menubar revealer button:last-child { color: {{red}}; }
+
+/* Taqvim */
+.widget-calendar .day-label  { color: {{accent}}; font-weight: 800; font-size: 1.05rem; }
+.widget-calendar .date-label { color: {{subtext}}; font-size: 1.6rem; font-weight: 300; opacity: 1; }
+.widget-calendar calendar {
+  background: rgba({{bg_alt.rgb}}, 0.9);
+  border: 1px solid {{overlay}};
+  border-radius: 16px;
+  color: {{subtext}};
+}
+.widget-calendar calendar > grid > label.today {
+  background: {{accent}};
+  color: {{bg}};
+  border-radius: 99px;
+  font-weight: 800;
+}
+.widget-calendar calendar header { color: {{gold}}; }
+
+/* Tez tugmalar */
+.widget-buttons-grid { padding: 2px; }
+.widget-buttons-grid flowboxchild > button {
+  min-height: 46px;
+  background: {{surface}};
+  color: {{subtext}};
+  border: 1px solid {{overlay}};
+  border-radius: 14px;
+  font-size: 18px;
+  margin: 3px;
+}
+.widget-buttons-grid flowboxchild > button:hover { background: {{overlay}}; color: {{fg}}; }
+.widget-buttons-grid flowboxchild > button.active,
+.widget-buttons-grid flowboxchild > button:checked {
+  background: linear-gradient(135deg, {{accent}}, rgba({{accent.rgb}}, 0.7));
+  color: {{bg}};
+  border-color: transparent;
+}
+
+/* Slayderlar (ovoz, yorug'lik) */
+.widget-volume, .widget-backlight {
+  background: {{surface}};
+  border: 1px solid {{overlay}};
+  border-radius: 14px;
+  padding: 8px 12px;
+}
+.widget-volume label, .widget-backlight label { color: {{accent}}; font-size: 18px; margin-right: 6px; }
+.widget-volume trough, .widget-backlight trough {
+  background: {{overlay}};
+  border-radius: 99px;
+  min-height: 8px;
+}
+.widget-volume highlight, .widget-backlight highlight {
+  background: linear-gradient(90deg, {{accent}}, {{gold}});
+  border-radius: 99px;
+}
+.widget-volume slider, .widget-backlight slider {
+  background: {{fg}};
+  border-radius: 99px;
+  min-width: 16px;
+  min-height: 16px;
+  box-shadow: none;
+}
+.per-app-volume { background: transparent; }
+
+/* Musiqa pleyeri */
+.widget-mpris .widget-mpris-player {
+  border-radius: 16px;
+  border: 1px solid {{overlay}};
+  background: {{surface}};
+}
+.widget-mpris .widget-mpris-title    { color: {{fg}}; font-weight: 700; }
+.widget-mpris .widget-mpris-subtitle { color: {{subtext}}; }
+.widget-mpris button { color: {{fg}}; border-radius: 99px; }
+.widget-mpris button:hover { background: {{overlay}}; }
+
+/* Sarlavha va "Tozalash" tugmasi */
+.widget-title > label { color: {{fg}}; font-size: 1.1rem; font-weight: 800; }
+.widget-title > button {
+  background: {{surface}};
+  color: {{subtext}};
+  border: 1px solid {{overlay}};
+  border-radius: 10px;
+  padding: 4px 12px;
+}
+.widget-title > button:hover { background: {{red}}; color: {{bg}}; border-color: {{red}}; }
+
+/* Bezovta qilmaslik */
+.widget-dnd switch { background: {{overlay}}; border-radius: 99px; }
+.widget-dnd switch:checked { background: {{accent}}; }
